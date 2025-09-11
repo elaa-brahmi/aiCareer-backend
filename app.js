@@ -2,7 +2,7 @@ const express = require('express')
 const app = express()
 const port = 9090
 const cors = require("cors");
-const pool = require('./db');
+const {sequelize, testConnection} = require('./config/db');
 app.use(express.json());
 app.use(
     cors({
@@ -12,8 +12,7 @@ app.use(
       credentials: true,
     })
   );  
-pool.connect();
-
+testConnection();
 app.listen(port, () => {
     console.log(`http://localhost:${port}`);
   });
