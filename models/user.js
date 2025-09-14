@@ -1,5 +1,5 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/db');
+const {sequelize,testConnection} = require('../config/db');
 
 const UserModel = sequelize.define(
   'User',
@@ -9,7 +9,11 @@ const UserModel = sequelize.define(
       autoIncrement: true,
       primaryKey: true,
     },
-    name: {
+    firstName: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+    lastName: {
       type: DataTypes.STRING(255),
       allowNull: true,
     },
@@ -21,6 +25,7 @@ const UserModel = sequelize.define(
         isEmail: true,
       },
     },
+    accessToken: {type: DataTypes.STRING(255), default:""},
     password_hash: {
       type: DataTypes.STRING(255),
       allowNull: true, // Nullable for OAuth users
@@ -40,7 +45,7 @@ const UserModel = sequelize.define(
       allowNull: true,
     },
     plan: {
-      type: DataTypes.ENUM('free', 'premium'),
+      type: DataTypes.STRING(500),
       defaultValue: 'free',
     },
     plan_expires_at: {
