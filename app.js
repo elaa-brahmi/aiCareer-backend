@@ -4,7 +4,7 @@ const app = express()
 const port = 9090
 const cors = require("cors");
 const {sequelize, testConnection} = require('./config/db');
-const UserRouter = require('./routers/userRouter')
+const authRouter = require('./routers/authRouter')
 app.use(express.json());
 app.use(
     cors({
@@ -14,15 +14,15 @@ app.use(
       credentials: true,
     })
   );  
-/*   (async () => {
+  (async () => {
     try {
       await sequelize.sync({ alter: true }); // or .sync() if schema is correct
       console.log('Sequelize models synced');
     } catch (e) {
       console.error('Sequelize sync failed:', e);
     }
-  })(); */
-app.use('/api/user', UserRouter )
+  })();
+app.use('/api/auth', authRouter )
 app.listen(port, () => {
     console.log(`http://localhost:${port}`);
   });
