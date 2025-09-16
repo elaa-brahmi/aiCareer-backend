@@ -5,6 +5,7 @@ const port = 9090
 const cors = require("cors");
 const {sequelize, testConnection} = require('./config/db');
 const authRouter = require('./routers/authRouter')
+const paymentRouter = require('./routers/paymentRouter')
 app.use(express.json());
 app.use(
     cors({
@@ -23,6 +24,7 @@ app.use(
     }
   })();
 app.use('/api/auth', authRouter )
+app.use('/api/v1/payment', paymentRouter)
 app.listen(port, () => {
     console.log(`http://localhost:${port}`);
   });
