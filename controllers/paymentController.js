@@ -108,4 +108,5 @@ const handleDeleteSubscription = async (req, res) => {
         return res.status(500).json({ error: 'Failed to handle subscription deletion' });
       }
     };
+    
 module.exports = {checkoutCompleted , handleDeleteSubscription}
