@@ -1,6 +1,9 @@
 const PaymentModel = require('../models/payment')
 const UserModel = require('../models/user')
-
+const Stripe = require('stripe')
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: '2023-10-16',
+});
 require('dotenv').config();
 
 const checkoutCompleted = async (req, res) => {
@@ -34,8 +37,9 @@ const checkoutCompleted = async (req, res) => {
           price_id: session.line_items?.data[0]?.price?.id || null,
           plan: 'pro',
           plan_expires_at: planExpiresAt,
-          stripe_customer_id:session.customer
-
+          stripe_customer_id:session.customer,
+          status : 'active',
+          stripe_subscription_id:session.subscription
         },
         {
           where: { email: userEmail },
@@ -76,8 +80,9 @@ const handleDeleteSubscription = async (req, res) => {
         const updatedUser = await UserModel.update(
           {
             plan: 'free',
-            plan_expires_at: null,
             price_id: null,
+            status:'inactive',
+            stripe_subscription_id:null
           },
           { where: { stripe_customer_id: stripeCustomerId } }
         );
@@ -108,5 +113,5 @@ const handleDeleteSubscription = async (req, res) => {
         return res.status(500).json({ error: 'Failed to handle subscription deletion' });
       }
     };
-    
+
 module.exports = {checkoutCompleted , handleDeleteSubscription}
