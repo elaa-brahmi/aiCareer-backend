@@ -3,6 +3,9 @@ const SignUpSchema = require('../schemas/signUpSchema');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
+const { Op } = require('sequelize');
+const {sendPlanExpiredEmail} = require('../mailer/sendMail')
+const {sequelize,testConnection} = require('../config/db');
 
 const signUp = async (req, res) => {
     const { firstName, lastName, email, password } = req.body;
@@ -119,11 +122,49 @@ const OauthLogin = async (req, res) => {
         return res.status(400).json({message:"error oauth login", error:error.message})
     }
 }
+const verifyPlanExpiration = async () => {
+    try {
+      const now = new Date();
+      const expiredUsers = await UserModel.findAll({
+        where: {
+          status: 'active',
+          plan_expires_at: {
+            [Op.lte]: sequelize.fn('NOW')
+          }
+        }
+      });
+  
+      if (expiredUsers.length === 0) {
+        console.log('No expired plans found');
+        return { message: 'No expired users found' };
+      }
+  
+      for (const user of expiredUsers) {
+        user.status = 'inactive';
+        await user.save();
+        await sendPlanExpiredEmail(
+            user.email,
+            user.firstName,
+            "your current plan"
+        );
+        console.log(`User ${user.id} (${user.email}) deactivated — plan expired at ${user.plan_expires_at}`);
+      }
+  
+      return {
+        message: `${expiredUsers.length} users deactivated successfully`,
+        count: expiredUsers.length
+      };
+    } catch (error) {
+      console.error('Error verifying plan expiration:', error.message);
+      throw new Error('Error while verifying plan expiration');
+    }
+  };
 
 
 
 
 module.exports = {
+    verifyPlanExpiration,
     signUp,
     login,
     OauthLogin,
