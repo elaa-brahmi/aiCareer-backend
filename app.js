@@ -7,7 +7,7 @@ const {sequelize, testConnection} = require('./config/db');
 const authRouter = require('./routers/authRouter')
 const paymentRouter = require('./routers/paymentRouter')
 const { verifyPlanExpiration } = require("./controllers/userController"); 
-
+const CoverLetterRouter = require('./routers/coverLetter')
 const cron = require("node-cron");
 app.use(express.json());
 app.use(
@@ -28,6 +28,7 @@ app.use(
   })();
 app.use('/api/auth', authRouter )
 app.use('/api/v1/payment', paymentRouter)
+app.use('/api/coverLetter',CoverLetterRouter)
 cron.schedule("42 19 * * *", async () => {
   console.log("Running daily plan expiration cron job...");
   await verifyPlanExpiration();
