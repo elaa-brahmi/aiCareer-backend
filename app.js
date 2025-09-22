@@ -9,7 +9,11 @@ const paymentRouter = require('./routers/paymentRouter')
 const { verifyPlanExpiration } = require("./controllers/userController"); 
 const CoverLetterRouter = require('./routers/coverLetter')
 const cron = require("node-cron");
+const multer = require('multer');
+const upload = multer();
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); //to handle formdata
+app.use(upload.none()); // to handle multipart form fields
 app.use(
     cors({
       origin: [
