@@ -19,6 +19,10 @@ const generateCoverLetter = async (req, res) => {
 
 
   try {
+    if(user.plan === "free" &&  user.status === "inactive"){
+        return res.status(400).json({ message: "upgrade plan to generate cover letters" });
+
+    }
     const today = new Date();
     const formattedDate = today.toLocaleDateString("en-US", {
       year: "numeric",
@@ -75,7 +79,7 @@ const generateCoverLetter = async (req, res) => {
       writeStream.on("error", reject);
     });
 
-    // Upload PDF to Cloudinary
+     // Upload PDF to Cloudinary
     const result = await cloudinary.uploader.upload(pdfPath, {
     folder: `users/${userId}/cover_letters`,
     resource_type: "raw",
@@ -97,7 +101,7 @@ const generateCoverLetter = async (req, res) => {
     message: "Cover letter generated and uploaded successfully",
     coverLetterUrl: result.secure_url,
     });
-
+    
   } catch (error) {
     console.error("Hugging Face Error Response:", error.response?.data || error.message);
     console.error("Status Code:", error.response?.status || "Unknown");
@@ -115,8 +119,10 @@ const getCoverLettersByUser = async (req,res) => {
         order: [["createdAt", "DESC"]],
       });
   
-      if (!coverLetters || coverLetters.length === 0) {
-        return res.status(404).json({ message: "No cover letters found for this user" });
+      if (coverLetters.length === 0) {
+        return res.status(200).json({ message: "No cover letters found for this user" ,
+            urls: coverLetters,
+        });
       }
   
       return res.status(200).json({
@@ -130,5 +136,33 @@ const getCoverLettersByUser = async (req,res) => {
     }
 
 }
+const resetWeeklyCoverLetters = async() =>{
+    try {
+        const users = await UserModel.findAll({
+          where: {
+            status: 'inactive',
+            plan: 'free',
+          }
+        });
+        if (users.length === 0) {
+          console.log('No users found');
+          return { message: 'No  users found' };
+        }
+    
+        for (const user of users) {
+          user.cover_letters_this_week = 0;
+          await user.save();
+        
+        }
+    
+        return {
+          message: `${users.length} users reset cover letters this week`,
+          count: users.length
+        };
+      } catch (error) {
+        console.error('Error resetting cover letters this week:', error.message);
+        throw new Error('Error while verifying resetting cover letters');
+      }
+}
 
-module.exports = { generateCoverLetter, getCoverLettersByUser };
+module.exports = { generateCoverLetter, getCoverLettersByUser, resetWeeklyCoverLetters };
