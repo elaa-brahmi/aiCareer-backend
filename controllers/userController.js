@@ -141,6 +141,7 @@ const verifyPlanExpiration = async () => {
   
       for (const user of expiredUsers) {
         user.status = 'inactive';
+        user.plan= 'free';
         await user.save();
         await sendPlanExpiredEmail(
             user.email,
