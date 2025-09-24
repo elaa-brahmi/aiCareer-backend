@@ -5,8 +5,21 @@ const port = 9090
 const cors = require("cors");
 const {sequelize, testConnection} = require('./config/db');
 const authRouter = require('./routers/authRouter')
+const paymentRouter = require('./routers/paymentRouter')
+const { verifyPlanExpiration } = require("./controllers/userController"); 
+const CoverLetterRouter = require('./routers/coverLetter')
+const cron = require("node-cron");
+const multer = require('multer');
+const upload = multer();
+const helmet = require("helmet")
+const {resetMonthlyUploads} = require('./controllers/resumeController')
+const {resetWeeklyCoverLetters} = require('./controllers/coverLetterController')
+const userRouter = require('./routers/userRouter')
+app.use(helmet())
 const scraperRouter = require('./routers/scrapers')
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); //to handle formdata
+app.use(upload.none()); // to handle multipart form fields
 app.use(
     cors({
       origin: [
@@ -24,6 +37,21 @@ app.use(
     }
   })();
 app.use('/api/auth', authRouter )
+app.use('/api/v1/payment', paymentRouter)
+app.use('/api/coverLetter',CoverLetterRouter)
+app.use('/api/users', userRouter)
+cron.schedule("42 19 * * *", async () => {
+  console.log("Running daily plan expiration cron job...");
+  await verifyPlanExpiration();
+});
+cron.schedule('0 0 1 * *', async() => {
+  console.log('Running monthly job at', new Date());
+  await resetMonthlyUploads()
+});
+cron.schedule('0 2 * * 0', async() => {
+  console.log('Running weekly job at', new Date());
+  await resetWeeklyCoverLetters()
+});
 app.use('/api/scrape', scraperRouter)
 app.listen(port, () => {
     console.log(`http://localhost:${port}`);

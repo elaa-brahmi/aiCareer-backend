@@ -35,6 +35,10 @@ const UserModel = sequelize.define(
       allowNull: true,
       unique: true,
     },
+    stripe_subscription_id: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
     github_id: {
       type: DataTypes.STRING(255),
       allowNull: true,
@@ -48,9 +52,23 @@ const UserModel = sequelize.define(
       type: DataTypes.STRING(500),
       defaultValue: 'free',
     },
+      price_id: {
+        type: DataTypes.STRING(255)
+
+    },
     plan_expires_at: {
       type: DataTypes.DATE,
       allowNull: true,
+    },
+    status:{
+      type: DataTypes.STRING(500),
+      defaultValue: 'inactive',
+
+    },
+    stripe_customer_id: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      unique: true,
     },
     uploads_this_month: {
       type: DataTypes.INTEGER,
