@@ -14,6 +14,7 @@ const upload = multer();
 const helmet = require("helmet")
 const {resetMonthlyUploads} = require('./controllers/resumeController')
 const {resetWeeklyCoverLetters} = require('./controllers/coverLetterController')
+const userRouter = require('./routers/userRouter')
 app.use(helmet())
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); //to handle formdata
@@ -37,6 +38,7 @@ app.use(
 app.use('/api/auth', authRouter )
 app.use('/api/v1/payment', paymentRouter)
 app.use('/api/coverLetter',CoverLetterRouter)
+app.use('/api/users', userRouter)
 cron.schedule("42 19 * * *", async () => {
   console.log("Running daily plan expiration cron job...");
   await verifyPlanExpiration();
