@@ -1,12 +1,13 @@
 const dotenv = require("dotenv");
 const { InferenceClient } = require("@huggingface/inference");
 const fs = require("fs");
-const path = require("path");
 const PDFDocument = require("pdfkit");
-const cloudinary = require("../config/cloudinary");
 dotenv.config();
+const supabase = require('../config/supabase'); 
 const CoverLetterModel = require("../models/coverLetter");
-const hf = new InferenceClient(process.env.HUGGING_FACE_COVER_GEN,
+const User = require('../models/user')
+const hf = new InferenceClient(
+    process.env.HUGGING_FACE_COVER_GEN
   );
   
 
@@ -14,12 +15,16 @@ const hf = new InferenceClient(process.env.HUGGING_FACE_COVER_GEN,
 //maybe add resume
 const generateCoverLetter = async (req, res) => {
   const { fullName,title, companyName, description, tone, exp, skills } = req.body;
-  const userId=req.user.id
-  console.log('user id from generate cover letter', userId)
+  const userId="10"
+  const dbUser = await User.findByPk(userId);
+
+    if (!dbUser) {
+    return res.status(404).json({ message: "User not found" });
+    }
 
 
   try {
-    if(user.plan === "free" &&  user.status === "inactive"){
+    if(dbUser.plan === "free" &&  dbUser.status === "inactive" && dbUser.cover_letters_this_week >= 5){
         return res.status(400).json({ message: "upgrade plan to generate cover letters" });
 
     }
@@ -60,46 +65,16 @@ const generateCoverLetter = async (req, res) => {
 
     const generatedText = response.choices?.[0]?.message?.content || "";
     console.log('generated hg text',generatedText)
-
-    // Create PDF
-    const tempDir = path.join(__dirname, "../temp");
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-
-    const pdfPath = path.join(tempDir, `cover_letter_${userId}.pdf`);
-    const writeStream = fs.createWriteStream(pdfPath);
-
-    const pdfDoc = new PDFDocument();
-    pdfDoc.pipe(writeStream);
-    pdfDoc.fontSize(12).text(generatedText, { align: "left" });
-    pdfDoc.end();
-
-    // Wait for file to finish writing
-    await new Promise((resolve, reject) => {
-      writeStream.on("finish", resolve);
-      writeStream.on("error", reject);
-    });
-
-     // Upload PDF to Cloudinary
-    const result = await cloudinary.uploader.upload(pdfPath, {
-    folder: `users/${userId}/cover_letters`,
-    resource_type: "raw",
-    });
-    console.log("PDF uploaded to Cloudinary:", result.secure_url);
-
-    // Save URL to CoverLetter model 
+    const publicUrl= await uploadPDFBuffer(userId,generatedText)
     const newCoverLetter = await CoverLetterModel.create({
-    userId: userId,
-    title: title,
-    companyName: companyName,
-    generatedUrl: result.secure_url,
-    });
-
-    //Cleanup
-    fs.unlinkSync(pdfPath);
-
+        userId: userId,
+        title: title,
+        companyName: companyName,
+        generatedUrl: publicUrl,  // <-- use Supabase public URL here
+      });
     return res.status(200).json({
     message: "Cover letter generated and uploaded successfully",
-    coverLetterUrl: result.secure_url,
+    coverLetterUrl: publicUrl,
     });
     
   } catch (error) {
@@ -112,7 +87,6 @@ const generateCoverLetter = async (req, res) => {
 };
 const getCoverLettersByUser = async (req,res) => {
     const userId=req.user.id
-    console.log('user id from get cover lettrs ', userId)
     try{
     const coverLetters = await CoverLetterModel.findAll({
         where: { userId },
@@ -164,5 +138,49 @@ const resetWeeklyCoverLetters = async() =>{
         throw new Error('Error while verifying resetting cover letters');
       }
 }
+
+async function uploadPDFBuffer(userId, generatedText) {
+    const pdfDoc = new PDFDocument();
+    const chunks = [];
+  
+    pdfDoc.on('data', (chunk) => chunks.push(chunk)); //pdfkit streams the pdf content as a sequence of small chunks
+    pdfDoc.on('error', (err) => { throw err; });
+  
+    // Write content to PDF
+    pdfDoc.fontSize(12).text(generatedText, { align: 'left' });
+  
+    // End PDF
+    pdfDoc.end();
+  
+    // Wait until PDF is fully generated
+    await new Promise((resolve) => pdfDoc.on('end', resolve));
+  
+    // Combine all chunks into a single Buffer
+    const pdfBuffer = Buffer.concat(chunks);
+  
+    const fileName = `users/${userId}/cover_letters/cover_letter_${Date.now()}.pdf`;
+  
+    // Upload to Supabase
+    const { data, error } = await supabase.storage
+      .from('cover_letters')
+      .upload(fileName, pdfBuffer, { contentType: 'application/pdf', upsert: true });
+  
+    if (error) throw error;
+  
+    // Get public URL
+    const { data: publicUrlData, error: urlError } = supabase
+      .storage
+      .from('cover_letters')
+      .getPublicUrl(fileName);
+  
+    if (urlError) throw urlError;
+  
+    const publicUrl = publicUrlData.publicUrl;
+    console.log('public url', publicUrl);
+  
+    return publicUrl;
+  }
+  
+
 
 module.exports = { generateCoverLetter, getCoverLettersByUser, resetWeeklyCoverLetters };

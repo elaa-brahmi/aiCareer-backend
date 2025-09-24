@@ -160,11 +160,27 @@ const verifyPlanExpiration = async () => {
       throw new Error('Error while verifying plan expiration');
     }
   };
+const getUserById = async(req,res) => {
+    try{
+    const {userId} = req.params;
+    const user = await UserModel.findByPk(userId)
+    if (!user) {
+        return res.status(404).json({ message: "User not found" });
+    }
+    return res.status(200).json(user)
+    }
+    catch(error){
+        console.log(error)
+        return res.status(400).json({message:'error fethcing user by id'})
+    }
+
+}
 
 
 
 
 module.exports = {
+    getUserById,
     verifyPlanExpiration,
     signUp,
     login,
