@@ -17,6 +17,7 @@ const {resetWeeklyCoverLetters} = require('./controllers/coverLetterController')
 const userRouter = require('./routers/userRouter')
 app.use(helmet())
 const scraperRouter = require('./routers/scrapers')
+const {updateJobs} = require('./scrapers/remoteokScraper')
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); //to handle formdata
 app.use(upload.none()); // to handle multipart form fields
@@ -40,6 +41,12 @@ app.use('/api/auth', authRouter )
 app.use('/api/v1/payment', paymentRouter)
 app.use('/api/coverLetter',CoverLetterRouter)
 app.use('/api/users', userRouter)
+// Endpoint to fetch jobs
+// Cron: runs every 10 minutes
+cron.schedule("*/10 * * * *", async () => {
+  console.log("Cron job running: updating jobs...");
+  await updateJobs();
+});
 cron.schedule("42 19 * * *", async () => {
   console.log("Running daily plan expiration cron job...");
   await verifyPlanExpiration();

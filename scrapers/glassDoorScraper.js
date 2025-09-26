@@ -1,4 +1,4 @@
-//const cheerio = require('cheerio');
+/* //const cheerio = require('cheerio');
 const { chromium } = require('playwright');
 const JobsMap = {
   'softwareEngineering':'https://www.glassdoor.com/Job/software-engineer-jobs-SRCH_KO0,17.htm'
@@ -81,22 +81,11 @@ const JobsMap = {
                     await new Promise(resolve => setTimeout(resolve, 1000)); // Delay to avoid detection
                     //save the job  
             };
-           /*  const showMoreButton = await page.$('.button_Button__o_a9q button-base_Button__zzUq2'); //get show more button
-            let isDisabled = true; // Assume disabled if button not found
-            if (showMoreButton) {
-                isDisabled = await nextButton.evaluate(el =>
-                    el.classList.contains('disable') || el.classList.contains('disabled')
-                );
-            }
-            if (!isDisabled) {
-                //click on it to load more jobs
-            } else {
-                //there no more jobs
-            } */
+ 
            return res.status(200).json({ jobs: jobsData })
         } catch(err) {
             console.log(err);
         } 
         await browser.close();
 };
-module.exports =  scrapeGlassDoor ;
+module.exports =  scrapeGlassDoor ; */
