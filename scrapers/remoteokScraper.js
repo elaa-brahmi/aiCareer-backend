@@ -1,9 +1,13 @@
+const dotenv = require("dotenv");
+const { InferenceClient } = require("@huggingface/inference");
 const fetch = require("node-fetch");
 const JobModel = require("../models/job"); // your Job model
 const { Op } = require('sequelize');
-
+dotenv.config();
 const SOURCE = "remoteok";
-
+const hf = new InferenceClient(
+    process.env.HUGGING_FACE_COVER_GEN
+  );
 // Fetch jobs from RemoteOK JSON
 const fetchJobs = async() => {
   try {
@@ -40,7 +44,37 @@ const  saveJobsToDB = async(jobs) =>{
     });
 
     if (!existing) {
-      await JobModel.create({ ...job, created_at: new Date() });
+        try{
+            const prompt = `
+            Instructions:
+            - Remove all HTML and CSS tags like <p>, <ul>, <li>, <b>, <a>, <div>, <br>, etc.
+            - Keep only readable text and sentences.
+            - Preserve important text structure like bullet points or lists by separating them with line breaks or dashes.
+            - Do NOT include any leftover code, scripts, or links.
+            - Output only the cleaned text, no extra commentary.
+
+            Input:
+            ${job.description}
+                    `;
+            const response = await hf.chatCompletion({
+                model: "deepseek-ai/DeepSeek-V3.1-Terminus",
+                messages: [
+                  { role: "system", content: "You are a text-cleaning assistant. Your task is to extract only the meaningful plain text job description from the given HTML content." },
+                  { role: "user", content: prompt },
+                ],
+                max_tokens: 1000,
+                temperature: 0.2,
+              });
+          
+              const generatedText = response.choices?.[0]?.message?.content || "";
+              console.log('generated job description',generatedText)
+              await JobModel.create({ ...job,  description: generatedText, created_at: new Date() });
+
+
+        }
+        catch(error){
+            console.log(error)
+        }
     }
   }
   console.log(`${jobs.length} jobs processed and stored.`);
