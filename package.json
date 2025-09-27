@@ -33,7 +33,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node app.js",
-    "dev": "nodemon app.js"
+    "dev": "nodemon app.js",
+    "test": "node scrapers/linkedinScraper/apiTest.js"
   },
   "keywords": [],
   "author": "",

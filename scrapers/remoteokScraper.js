@@ -77,7 +77,7 @@ const  saveJobsToDB = async(jobs) =>{
         }
     }
   }
-  console.log(`${jobs.length} jobs processed and stored.`);
+  console.log(`${jobs.length} jobs from remoteok processed and stored.`);
 }
 
 // Main function to fetch + save
