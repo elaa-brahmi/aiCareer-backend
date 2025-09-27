@@ -18,6 +18,9 @@ const userRouter = require('./routers/userRouter')
 app.use(helmet())
 const scraperRouter = require('./routers/scrapers')
 const {updateJobs} = require('./scrapers/remoteokScraper')
+const {errorHandler} = require('./scrapers/linkedinScraper/errorHandler')
+const {searchJobs} = require('./scrapers/linkedinScraper/jobController')
+const deleteOldJobs = require('./controllers/jobController')
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); //to handle formdata
 app.use(upload.none()); // to handle multipart form fields
@@ -37,14 +40,31 @@ app.use(
       console.error('Sequelize sync failed:', e);
     }
   })();
+  app.get('/', (req, res) => {
+    res.json({
+      message: 'Welcome to LinkedIn Jobs API',
+      endpoints: {
+        search: '/api/search?keywords=react&location=remote&dateSincePosted=past_24h',
+        cron: '/api/cron/search?keywords=react&location=remote&dateSincePosted=past_24h'
+      },
+      rateLimits: {
+        search: '50 requests per day',
+        cron: '1 request per 6 hours'
+      }
+    });
+  });
 app.use('/api/auth', authRouter )
 app.use('/api/v1/payment', paymentRouter)
 app.use('/api/coverLetter',CoverLetterRouter)
 app.use('/api/users', userRouter)
+app.use('/api/scrape', scraperRouter)
+app.get('/api/linkedin/search', searchJobs);
+app.use(errorHandler)
+
 // Endpoint to fetch jobs
-// Cron: runs every 10 minutes
-cron.schedule("*/10 * * * *", async () => {
-  console.log("Cron job running: updating jobs...");
+// Cron: runs every 3 days
+cron.schedule("0 0 */3 * *", async () => {
+  console.log("Cron job running: updating jobs from remoteok...");
   await updateJobs();
 });
 cron.schedule("42 19 * * *", async () => {
@@ -59,7 +79,17 @@ cron.schedule('0 2 * * 0', async() => {
   console.log('Running weekly job at', new Date());
   await resetWeeklyCoverLetters()
 });
-app.use('/api/scrape', scraperRouter)
+
+cron.schedule('0 0 */5 * *', () => {
+  console.log(' Running scheduled for scraping jobs from linkedin...');
+  searchJobs();
+});
+
+//delete jobs having posted date more than a month 
+cron.schedule('0 0 */2 * *', () => {
+  console.log(' Running scheduled cleanup for old jobs...');
+  deleteOldJobs();
+});
 app.listen(port, () => {
     console.log(`http://localhost:${port}`);
   });
