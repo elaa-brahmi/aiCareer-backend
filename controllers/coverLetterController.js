@@ -24,7 +24,7 @@ const generateCoverLetter = async (req, res) => {
 
 
   try {
-    if(dbUser.plan === "free" &&  dbUser.status === "inactive" && dbUser.cover_letters_this_week >= 5){
+    if(dbUser.plan === "free" &&  dbUser.status === "inactive" && dbUser.cover_letters_this_week >= 3){
         return res.status(400).json({ message: "upgrade plan to generate cover letters" });
 
     }
