@@ -1,4 +1,6 @@
 const UserModel = require('../models/user')
+const supabase = require('../config/supabase'); 
+const ResumeModel = require('../models/resume')
 const resetMonthlyUploads = async() =>{
     try {
         const users = await UserModel.findAll({
@@ -27,4 +29,86 @@ const resetMonthlyUploads = async() =>{
         throw new Error('Error while verifying resetting uploads');
       }
 }
-module.exports={resetMonthlyUploads}
+const uploadResumeToSupaBase = async(userId,buffer,originalname) =>{
+  const fileName = `users/${userId}/resumes/resume_${Date.now()}.pdf`;
+  // Upload to Supabase
+  const { data, error } = await supabase.storage
+    .from('resumes')
+    .upload(fileName, buffer, { contentType: 'application/pdf', upsert: true });
+  if (error) throw error;
+  // Get public URL
+  const { data: publicUrlData, error: urlError } = supabase
+    .storage
+    .from('resumes')
+    .getPublicUrl(fileName);
+
+  if (urlError) throw urlError;
+
+  const publicUrl = publicUrlData.publicUrl;
+  console.log('uploaded resume url ',publicUrl) 
+
+  //save to resume
+  await ResumeModel.create(
+    {
+      fileName:originalname,
+      generatedUrl:publicUrl,
+      userId:userId
+    }
+  )
+}
+const resumeAnalyzer = async(req,res)=> {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No resume uploaded" });
+    }
+    console.log("Received file:", req.file.originalname);
+    const { originalname, mimetype, size, buffer } = req.file;
+    const userId = req.user?.id
+    await uploadResumeToSupaBase(userId,buffer,originalname)
+    //analyze logic
+
+
+    
+    res.json({ message: "Resume uploaded successfully" });
+  } catch (error) {
+    console.error("Resume analyzer error:", error);
+    res.status(500).json({ message: "Error analyzing resume" });
+  }
+
+}
+const getUserResumes = async(req,res) => {
+  const userId=req.user.id
+  console.log('getting resumes for user ',userId)
+  try{
+    const resumes = await ResumeModel.findAll({
+      where: { userId:userId },
+      order: [["createdAt", "DESC"]],
+    });
+
+    console.log('user resumes ',resumes)
+    return res.status(200).json({resumes:resumes})
+  }
+  catch(error){
+    console.log(error)
+    return res.status(400).json({message:error})
+  }
+
+}
+const deleteResume = async(req,res) => {
+  const resumeId = req.params.resumeId;
+  try{
+
+    await ResumeModel.destroy({
+      where:{
+        id:resumeId
+      }
+    });
+    res.status(200).json({message:'resume deleted'})
+  }
+  catch(error){
+    console.log(error)
+    res.status(400).json({message:'error deleting resume'})
+  }
+
+}
+module.exports={resetMonthlyUploads,resumeAnalyzer,getUserResumes,deleteResume}

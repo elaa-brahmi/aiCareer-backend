@@ -9,8 +9,6 @@ const paymentRouter = require('./routers/paymentRouter')
 const { verifyPlanExpiration } = require("./controllers/userController"); 
 const CoverLetterRouter = require('./routers/coverLetter')
 const cron = require("node-cron");
-const multer = require('multer');
-const upload = multer();
 const helmet = require("helmet")
 const {resetMonthlyUploads} = require('./controllers/resumeController')
 const {resetWeeklyCoverLetters} = require('./controllers/coverLetterController')
@@ -21,9 +19,9 @@ const {updateJobs} = require('./scrapers/remoteokScraper')
 const {errorHandler} = require('./scrapers/linkedinScraper/errorHandler')
 const {searchJobs} = require('./scrapers/linkedinScraper/jobController')
 const deleteOldJobs = require('./controllers/jobController')
+const {ResumeRouter} = require('./routers/resumeRouter')
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); //to handle formdata
-app.use(upload.none()); // to handle multipart form fields
 app.use(
     cors({
       origin: [
@@ -60,6 +58,7 @@ app.use('/api/users', userRouter)
 app.use('/api/scrape', scraperRouter)
 app.get('/api/linkedin/search', searchJobs);
 app.use(errorHandler)
+app.use('/api/resume',ResumeRouter)
 
 // Endpoint to fetch jobs
 // Cron: runs every 3 days
