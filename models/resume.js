@@ -14,6 +14,11 @@ const ResumeModel = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    fileName: {
+      type: DataTypes.STRING(500),
+      allowNull: false,
+
+    },
     generatedUrl: {
       type: DataTypes.STRING(500),
       allowNull: false,
