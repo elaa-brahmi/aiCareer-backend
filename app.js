@@ -18,10 +18,13 @@ const scraperRouter = require('./routers/scrapers')
 const {updateJobs} = require('./scrapers/remoteokScraper')
 const {errorHandler} = require('./scrapers/linkedinScraper/errorHandler')
 const {searchJobs} = require('./scrapers/linkedinScraper/jobController')
+const {saveJobs} = require('./scrapers/linkedinScraper/linkedinService')
 const deleteOldJobs = require('./controllers/jobController')
 const {ResumeRouter} = require('./routers/resumeRouter')
-app.use(express.json());
-app.use(express.urlencoded({ extended: true })); //to handle formdata
+// Increase JSON and URL-encoded body size limit
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
 app.use(
     cors({
       origin: [
@@ -56,13 +59,26 @@ app.use('/api/v1/payment', paymentRouter)
 app.use('/api/coverLetter',CoverLetterRouter)
 app.use('/api/users', userRouter)
 app.use('/api/scrape', scraperRouter)
-app.get('/api/linkedin/search', searchJobs);
+app.post('/api/linkedin/search', async(req,res) => {
+  console.log("data received from linkedin search")
+  //console.log(req.body.jobs)
+  console.log(req.body.jobs.length)
+  try{
+  
+  await saveJobs(req.body.jobs)
+  res.status(200).send({ message: "Received successfully" });
+  }catch(error){
+    console.error('Error saving jobs:', error.message);
+    res.status(500).send({ message: "Error saving jobs" });
+  }
+});
 app.use(errorHandler)
 app.use('/api/resume',ResumeRouter)
 
 // Endpoint to fetch jobs
 // Cron: runs every 3 days
-cron.schedule("0 0 */3 * *", async () => {
+//cron.schedule("0 0 */3 * *", async () => {
+  cron.schedule('5 12 * * *', async () => {
   console.log("Cron job running: updating jobs from remoteok...");
   await updateJobs();
 });
@@ -79,10 +95,11 @@ cron.schedule('0 2 * * 0', async() => {
   await resetWeeklyCoverLetters()
 });
 
-cron.schedule('0 0 */5 * *', () => {
+//cron.schedule('0 0 */5 * *', () => {
+/*   cron.schedule('53 18 * * *', async () => {
   console.log(' Running scheduled for scraping jobs from linkedin...');
-  searchJobs();
-});
+  await runScheduledScrape({ location: '', dateSincePosted: '' });
+}); */
 
 //delete jobs having posted date more than a month 
 cron.schedule('0 0 */2 * *', () => {
