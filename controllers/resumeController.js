@@ -1,6 +1,10 @@
 const UserModel = require('../models/user')
 const supabase = require('../config/supabase'); 
-const ResumeModel = require('../models/resume')
+const ResumeModel = require('../models/resume');
+const JobModel = require("../models/job"); 
+const pinecone = require("../config/pineconeClient");
+const { getEmbedding } = require("../embedder");
+//const { pdfParse } = require("pdf-parse");
 const resetMonthlyUploads = async() =>{
     try {
         const users = await UserModel.findAll({
@@ -56,6 +60,36 @@ const uploadResumeToSupaBase = async(userId,buffer,originalname) =>{
     }
   )
 }
+
+const  matchResume = async(resumeText) => {
+  const index = pinecone.Index("jobs-index");
+
+  const embedding = await getEmbedding(resumeText);
+
+  const query = await index.query({
+    vector: embedding,
+    topK: 10,
+    includeMetadata: true,
+  });
+
+  return query.matches.map((match) => ({
+    id: match.id,
+    score: match.score,
+    title: match.metadata.title,
+    description: match.metadata.description,
+  }));
+}
+const extractText = async (fileBuffer) => {
+  try {
+    const { default: pdfParse } = await import("pdf-parse"); // dynamic import
+    const data = await pdfParse(fileBuffer);
+    return data.text; // extracted plain text from PDF
+  } catch (err) {
+    console.error("Error extracting text from PDF:", err);
+    throw new Error("Could not extract text from resume");
+  }
+};
+
 const resumeAnalyzer = async(req,res)=> {
   try {
     if (!req.file) {
@@ -66,10 +100,17 @@ const resumeAnalyzer = async(req,res)=> {
     const userId = req.user?.id
     await uploadResumeToSupaBase(userId,buffer,originalname)
     //analyze logic
-
-
+    //extract resume text
+    const text=await extractText(buffer);
+    if (!resumeText || resumeText.trim().length < 50) {
+      return res.status(400).json({ message: "Resume text could not be extracted" });
+    }
+    const matches= await matchResume(text)
     
-    res.json({ message: "Resume uploaded successfully" });
+    res.json({
+      message: "Resume analyzed successfully",
+      matches,
+    });
   } catch (error) {
     console.error("Resume analyzer error:", error);
     res.status(500).json({ message: "Error analyzing resume" });

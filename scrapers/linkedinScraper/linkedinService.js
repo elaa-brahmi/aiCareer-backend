@@ -2,6 +2,13 @@ const puppeteer = require('puppeteer');
 const { formatJobData } = require('./formatter');
 const SOURCE = "linkedin";
 const JobModel = require("../../models/job"); 
+const pinecone = require("../../config/pineconeClient");
+const { getEmbedding } = require("../../embedder");
+const { v4: uuidv4 } = require("uuid");
+const {hashId} = require('../../utilities/hash')
+const axios = require("axios");
+const dotenv = require("dotenv");
+dotenv.config();
 const fetchJobListings = async(keywords, location = '', dateSincePosted = '') => {
   let browser;
   try {
@@ -47,9 +54,77 @@ const fetchJobListings = async(keywords, location = '', dateSincePosted = '') =>
 
     // Wait a bit for dynamic content to load
     await new Promise(resolve => setTimeout(resolve, 3000));
+     // Select job results container
+    /*  const jobsContainerSelector = '.scaffold-layout__list';
+     await page.waitForSelector(jobsContainerSelector, { timeout: 20000 });
+     //screenshot
+     await page.screenshot({ path: 'screenshot.png' });
+ 
+     const jobCards = await page.$$(jobsContainerSelector + ' li');
+     console.log(`Found ${jobCards.length} job cards`); */
+     // Wait for job results container
+    const jobsContainerSelector = '.scaffold-layout__list';
+    await page.waitForSelector(jobsContainerSelector, { timeout: 20000 });
+
+    // Get all job cards as <li> elements inside container
+    const jobCards = await page.$$(jobsContainerSelector + ' li');
+    console.log(`Found ${jobCards.length} job cards`);
+ 
+     const jobs = [];
+ 
+     for (let i = 0; i < jobCards.length; i++) {
+       try {
+         const card = jobCards[i];
+ 
+         // Scroll card into view then click
+         await card.evaluate(el => el.scrollIntoView());
+         await card.click();
+         await page.screenshot({ path: 'screenshot.png' });
+ 
+         // Wait for job description panel
+         await page.waitForSelector('.jobs-search__job-details--wrapper', { timeout: 10000 });
+ 
+         // Extract job details
+         const job = await page.evaluate(() => {
+           const getText = (sel) => {
+             const el = document.querySelector(sel);
+             return el ? el.textContent.trim() : '';
+           };
+ 
+           const getHref = (sel) => {
+             const el = document.querySelector(sel);
+             return el ? el.href : '';
+           };
+ 
+           return {
+             title: getText('.jobs-unified-top-card__job-title'),
+             company: getText('.jobs-unified-top-card__company-name a'),
+             location: getText('.jobs-unified-top-card__bullet'),
+             link: window.location.href,
+             listDate: getText('.jobs-unified-top-card__posted-date'),
+             description:  document.querySelector('.jobs-box--fadein.jobs-box--full-width.jobs-box--with-cta-large.jobs-description.jobs-description--reformatted.job-details-module').innerHTML()
+           };
+         });
+ 
+         if (job.title) {
+           jobs.push(job);
+           console.log(`Scraped job ${i + 1}/${jobCards.length}: ${job.title}`);
+         }
+       } catch (err) {
+         console.error(`Error scraping job ${i + 1}:`, err.message);
+       }
+     }
+ 
+     console.log(`Successfully scraped ${jobs.length} jobs`);
+     const formattedJobs = jobs.map(job => formatJobData(job));
+ 
+     await saveJobsToDB(formattedJobs);
+     console.log('Jobs saved to DB');
+ 
+     return formattedJobs;
 
     // Try multiple selectors as LinkedIn may have changed their structure
-    const selectors = [
+    /* const selectors = [
       '.jobs-search__results-list',
       '.jobs-search-results-list',
       '[data-test-id="job-search-results"]',
@@ -124,7 +199,7 @@ const fetchJobListings = async(keywords, location = '', dateSincePosted = '') =>
           location: getTextContent(locationSelectors),
           link: getHref(linkSelectors),
           listDate: getDate(dateSelectors),
-          description: getTextContent(['.base-search-card__metadata', '.job-card-container__metadata'])
+          description: getTextContent(['.base-search-card__metadata', '.job-card-container__metadata','.jobs-description__content jobs-description-content'])
         };
       });
     });
@@ -132,9 +207,11 @@ const fetchJobListings = async(keywords, location = '', dateSincePosted = '') =>
     console.log(`Found ${jobs.length} jobs`);
     const formattedJobs = jobs.map(job => formatJobData(job));
     console.log('About to save jobs to DB...');
+   
     await saveJobsToDB(formattedJobs);
     console.log('Jobs saved to DB, returning formatted jobs...');
-    return formattedJobs;
+
+    return formattedJobs; */
   } catch (error) {
     console.error('Error fetching jobs:', error);
     throw new Error(`Failed to fetch job listings: ${error.message}`);
@@ -143,7 +220,204 @@ const fetchJobListings = async(keywords, location = '', dateSincePosted = '') =>
       await browser.close();
     }
   }
+} 
+
+
+async function manualFetch(indexHost, apiKey, id) {
+  try {
+    console.log(`Manually fetching ID: ${id} from host: ${indexHost}`);
+    const response = await axios.get(
+      `https://${indexHost}/vectors/fetch?ids=${id}`,
+      {
+        headers: { "Api-Key": apiKey },
+        timeout: 10000, // 10s timeout
+      }
+    );
+    console.log("Manual fetch response:", response.status, response.data);
+    return response.data;
+  } catch (err) {
+    console.error("Manual fetch error:", err.message);
+    if (err.response) {
+      console.error("Response status:", err.response.status);
+      console.error("Response data:", err.response.data);
+    }
+    // Handle empty index or missing record
+    if (err.response?.status === 404 || err.message.includes("Unexpected end of JSON input")) {
+      console.log("Assuming empty index or missing record");
+      return { records: {} };
+    }
+    throw err;
+  }
 }
+
+async function indexJob(title, description, jobUrl) {
+  console.log("Indexing job:", title, description, jobUrl);
+  const index = pinecone.Index("jobs-index");
+  const safeId = hashId(jobUrl);
+  console.log("Scraping job with hashed ID:", safeId);
+
+  // Validate inputs
+  if (typeof title !== "string" || typeof description !== "string" || typeof jobUrl !== "string") {
+    throw new Error("Invalid input: title, description, and jobUrl must be strings");
+  }
+  if (!title || !description || !jobUrl) {
+    throw new Error("Invalid input: title, description, and jobUrl must be non-empty");
+  }
+
+  try {
+    // Verify index exists
+    const indexDescription = await pinecone.describeIndex("jobs-index");
+    console.log("Index details:", indexDescription);
+    if (!indexDescription || !indexDescription.status?.ready) {
+      throw new Error("Pinecone index 'jobs-index' is not ready or does not exist");
+    }
+
+    // Fetch existing records using manual fetch
+    let existing;
+    try {
+      existing = await manualFetch(indexDescription.host, process.env.PINECONE_API_KEY, safeId);
+      console.log("Fetch result:", existing);
+    } catch (fetchErr) {
+      throw new Error(`Failed to fetch record: ${fetchErr.message}`);
+    }
+
+    if (existing?.records && Object.keys(existing.records).length > 0) {
+      console.log(`Job already indexed: ${title}`);
+      return;
+    }
+    console.log('embedding description :',description)
+
+    // Clean text for embedding (Pinecone will auto-embed the 'text' field)
+    const text = `${title}\n${description.replace(/\n\s*\n/g, "\n").trim()}`; // Clean excessive newlines
+    console.log("Text for Pinecone embedding:", text.slice(0, 100) + (text.length > 100 ? "..." : ""));
+    const embedding = await getEmbedding(text);
+    console.log("Embedding result:", embedding);
+    // Validate metadata size (includes text for embedding)
+    const metadata = { 
+      title, 
+      description, 
+      url: jobUrl,
+    };
+    // Validate embedding
+    
+
+    const metadataSize = Buffer.byteLength(JSON.stringify(metadata), "utf8");
+    console.log("Metadata size (bytes):", metadataSize);
+    if (metadataSize > 40 * 1024) {
+      throw new Error("Metadata exceeds Pinecone's 40KB limit");
+    }
+
+    // Upsert to Pinecone (auto-embeds 'text' using llama-text-embed-v2)
+    console.log("Upserting data with auto-embedding:", { id: safeId, metadata });
+    await index.upsert([
+      {
+        id: safeId,
+        values: embedding,
+        metadata,
+      },
+    ]);
+
+    console.log(`Indexed job: ${title} (auto-embedded with llama-text-embed-v2)`);
+  } catch (err) {
+    console.error(`Failed to index job "${title}" (${jobUrl}):`, err.message, err.stack);
+    throw err;
+  }
+}
+
+/* async function indexJob(title, description, jobUrl) {
+  const index = pinecone.Index("jobs-index");
+  const safeId = hashId(jobUrl);
+  console.log("Scraping job with hashed ID:", safeId);
+
+  // Validate inputs
+  if (typeof title !== "string" || typeof description !== "string" || typeof jobUrl !== "string") {
+    throw new Error("Invalid input: title, description, and jobUrl must be strings");
+  }
+  if (!title || !description || !jobUrl) {
+    throw new Error("Invalid input: title, description, and jobUrl must be non-empty");
+  }
+
+  try {
+    // Verify index exists
+    const indexDescription = await pinecone.describeIndex("jobs-index");
+    console.log("Index details:", indexDescription);
+    if (!indexDescription || !indexDescription.status?.ready) {
+      throw new Error("Pinecone index 'jobs-index' is not ready or does not exist");
+    }
+
+    // Fetch existing records with retry logic
+    let fetchAttempts = 0;
+    const maxAttempts = 3;
+    let existing = null;
+
+    while (fetchAttempts < maxAttempts) {
+      fetchAttempts++;
+      try {
+        console.log(`Fetching record for ID (attempt ${fetchAttempts}):`, safeId);
+        existing = await index.fetch({ ids: [safeId] });
+        console.log("Fetch result:", existing);
+        break; // Success, exit retry loop
+      } catch (fetchErr) {
+        console.error(`Fetch attempt ${fetchAttempts} failed:`, fetchErr.message);
+        if (fetchErr.response) {
+          console.error("Response status:", fetchErr.response.status);
+          console.error("Response data:", fetchErr.response.data);
+        }
+        if (fetchAttempts === maxAttempts) {
+          throw new Error(`Failed to fetch after ${maxAttempts} attempts: ${fetchErr.message}`);
+        }
+        // Exponential backoff
+        await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, fetchAttempts)));
+      }
+    }
+
+    if (existing?.records && Object.keys(existing.records).length > 0) {
+      console.log(`Job already indexed: ${title}`);
+      return;
+    }
+
+    // Generate embedding
+    const text = `${title}\n${description.slice(0, 8000)}`; // Limit description length
+    console.log("Text for embedding:", text);
+    const embedding = await getEmbedding(text);
+    console.log("Embedding result:", embedding);
+
+    // Validate embedding
+    if (!Array.isArray(embedding) || embedding.length === 0) {
+      throw new Error("Invalid embedding: Must be a non-empty array");
+    }
+    if (embedding.length !== indexDescription.dimension) {
+      throw new Error(
+        `Embedding dimension (${embedding.length}) does not match index dimension (${indexDescription.dimension})`
+      );
+    }
+
+    // Validate metadata size
+    const metadata = { title, description, url: jobUrl };
+    const metadataSize = Buffer.byteLength(JSON.stringify(metadata), "utf8");
+    console.log("Metadata size (bytes):", metadataSize);
+    if (metadataSize > 40 * 1024) {
+      throw new Error("Metadata exceeds Pinecone's 40KB limit");
+    }
+
+    // Upsert to Pinecone
+    console.log("Upserting data:", { id: safeId, values: embedding, metadata });
+    await index.upsert([
+      {
+        id: safeId,
+        values: embedding,
+        metadata,
+      },
+    ]);
+
+    console.log(`Indexed job: ${title}`);
+  } catch (err) {
+    console.error(`Failed to index job "${title}" (${jobUrl}):`, err.message, err.stack);
+    throw err; // Re-throw to propagate to caller
+  }
+} */
+
+
 const saveJobsToDB = async(jobs) => {
   console.log('saveJobsToDB called with', jobs.length, 'jobs');
   let savedCount = 0;
@@ -192,4 +466,50 @@ const constructSearchUrl = (keywords, location = '', dateSincePosted = '') => {
 
   return `${baseUrl}?${params.toString()}`;
 }
-module.exports={fetchJobListings}
+
+const saveJobs = async (jobsArray) => {
+  try {
+    if (!Array.isArray(jobsArray)) {
+      throw new Error("Invalid jobs format received");
+    }
+
+    console.log("Total jobs received:", jobsArray.length);
+
+    const formattedJobs = jobsArray.map(job => ({
+      id: job.id,
+      title: job.title,
+      company: job.companyName,
+      location: job.location,
+      url: job.link,
+      applyUrl: job.applyUrl,
+      description: job.descriptionText,
+      companyLogo: job.companyLogo,
+      companyLinkedinUrl: job.companyLinkedinUrl,
+      posted_at: job.postedAt,
+      source: 'linkedin'
+    }));
+
+    // Remove duplicates (same job ID)
+    const uniqueJobs = Object.values(
+      formattedJobs.reduce((acc, job) => {
+        acc[job.id] = job;
+        return acc;
+      }, {})
+    );
+
+    console.log("Unique jobs:", uniqueJobs.length);
+    await saveJobsToDB(uniqueJobs);
+    for (const job of uniqueJobs) {
+      try{
+      await indexJob(job.title, job.description, job.url);
+      }
+      catch(error){
+        console.error("Error indexing job:", error.message);
+      }
+    }
+  } catch (error) {
+    console.error("Error saving jobs:", error.message);
+  }
+};
+
+module.exports={fetchJobListings,saveJobs}
