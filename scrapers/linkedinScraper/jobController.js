@@ -2,7 +2,6 @@ const { fetchJobListings } = require('./linkedinService.js');
 const { validateSearchParams } = require('./validator.js');
 const JOBS = require('./constants.ts');
 
-// Internal reusable scraper that does not depend on Express req/res
 const scrapeAllCategories = async (location, dateSincePosted) => {
   console.log(' Starting automatic job scraping for ALL categories...');
   let allJobs = [];
@@ -63,7 +62,6 @@ const scrapeAllCategories = async (location, dateSincePosted) => {
   };
 };
 
-// Express handler
 const searchJobs = async(req, res, next) => {
   try {
     const { location, dateSincePosted } = req.query;
@@ -74,7 +72,6 @@ const searchJobs = async(req, res, next) => {
   }
 }
 
-// Cron-safe runner (no req/res/next)
 const runScheduledScrape = async (options = {}) => {
   const { location = '', dateSincePosted = '' } = options;
   try {
