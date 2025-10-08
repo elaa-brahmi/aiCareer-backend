@@ -4,10 +4,10 @@ const JobModel = require('./job')
 const UserModel = require('./user')
 const ResumeModel = require('./resume')
 const MatchesJobs = sequelize.define(
-    'matches',
+    'jobMatches',
     {
         id: {
-          type: DataTypes.BIGINT,
+          type: DataTypes.INTEGER,
           primaryKey: true,
           autoIncrement: true,
 
@@ -17,7 +17,7 @@ const MatchesJobs = sequelize.define(
             allowNull: false,
         },
         jobId: {
-            type: DataTypes.INTEGER,
+            type: DataTypes.BIGINT,
             allowNull: false,
 
         },
@@ -31,7 +31,7 @@ const MatchesJobs = sequelize.define(
 
         },
         description:{
-            type: DataTypes.STRING(255),
+            type: DataTypes.TEXT,
             allowNull: true,
 
         },
@@ -58,6 +58,9 @@ const MatchesJobs = sequelize.define(
         postedAt:{
             type: DataTypes.STRING(255),
             allowNull: true,
+        },
+        score:{
+            type: DataTypes.FLOAT,
         }
 
     },

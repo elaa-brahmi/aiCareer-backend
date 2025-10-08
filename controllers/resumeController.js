@@ -5,6 +5,7 @@ const JobModel = require("../models/job");
 const pinecone = require("../config/pineconeClient");
 const { getEmbedding } = require("../embedder");
 const  pdfParse  = require("pdf-parse");
+const MatchesJobs = require('../models/resume_job_matches')
 const resetMonthlyUploads = async() =>{
     try {
         const users = await UserModel.findAll({
@@ -49,16 +50,16 @@ const uploadResumeToSupaBase = async(userId,buffer,originalname) =>{
   if (urlError) throw urlError;
 
   const publicUrl = publicUrlData.publicUrl;
-  console.log('uploaded resume url ',publicUrl) 
 
   //save to resume
-  await ResumeModel.create(
+  const savedResume = await ResumeModel.create(
     {
       fileName:originalname,
       generatedUrl:publicUrl,
       userId:userId
     }
   )
+  return savedResume.id;
 }
 
 const  matchResume = async(resumeText) => {
@@ -91,37 +92,95 @@ const extractText = async (fileBuffer) => {
   }
 };
 
-const resumeAnalyzer = async(req,res)=> {
+const resumeAnalyzer = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: "No resume uploaded" });
     }
+
     console.log("Received file:", req.file.originalname);
-    const { originalname, mimetype, size, buffer } = req.file;
-    const userId = req.user?.id
-    await uploadResumeToSupaBase(userId,buffer,originalname)
-    //analyze logic
-    //extract resume text
-    const text=await extractText(buffer);
+    const { originalname, buffer } = req.file;
+    const userId = req.user?.id;
+
+    const resumeId = await uploadResumeToSupaBase(userId, buffer, originalname);
+
+    const text = await extractText(buffer);
     if (!text || text.trim().length < 50) {
       return res.status(400).json({ message: "Resume text could not be extracted" });
     }
-    console.log('resume text ', text)
-    const matches= await matchResume(text)
-    //save to db matches
-    
 
-    
+    const matches = await matchResume(text);
+
     res.status(200).json({
       message: "Resume analyzed successfully",
       matches,
     });
+
+    // Save matches asynchronously in the background
+    (async () => {
+      for (const match of matches) {
+        try {
+          const details = await getJobDetailsByUrl(match.url);
+          const existingJob = await MatchesJobs.findOne({ where: { url: details.url } });
+          if (existingJob) continue;
+
+          await MatchesJobs.create({
+            score: match.score * 100,
+            resumeId: resumeId,
+            userId: userId,
+            jobId: details.jobID,
+            title: details.title,
+            description: details.description,
+            url: details.url,
+            company: details.companyName,
+            location: details.location,
+            companyLogo: details.companyLogo,
+            postedAt: new Date(details.postedAt).toISOString(),
+          });
+        } catch (err) {
+          console.error("Error saving match:", err);
+        }
+      }
+    })();
   } catch (error) {
     console.error("Resume analyzer error:", error);
     res.status(500).json({ message: "Error analyzing resume" });
   }
+};
 
-}
+const getJobDetailsByUrl = async(url) => {
+  try {
+    const job = await JobModel.findOne({
+      where: { url },
+      attributes: [
+        'id',
+        'title',
+        'description',
+        'company',
+        'location',
+        'companyLogo',
+        'posted_at', // alias for clarity
+      ],
+    });
+
+    if (!job) return null;
+
+    return {
+      jobID: job.id,
+      title: job.title,
+      description: job.description,
+      companyName: job.company,
+      location: job.location,
+      companyLogo: job?.companyLogo,
+      postedAt: job.posted_at ? new Date(job.posted_at).toISOString() : null,
+      url, // original URL
+    };
+  } catch (error) {
+    console.error('Error fetching job details:', error);
+    throw new Error('Could not fetch job details');
+  }
+};
+
 const getUserResumes = async(req,res) => {
   const userId=req.user.id
   console.log('getting resumes for user ',userId)
