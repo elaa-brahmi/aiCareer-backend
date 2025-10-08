@@ -220,7 +220,7 @@ const fetchJobListings = async(keywords, location = '', dateSincePosted = '') =>
       await browser.close();
     }
   }
-} 
+}
 
 
 async function manualFetch(indexHost, apiKey, id) {
@@ -251,12 +251,11 @@ async function manualFetch(indexHost, apiKey, id) {
 }
 
 async function indexJob(title, description, jobUrl) {
-  console.log("Indexing job:", title, description, jobUrl);
-  const index = pinecone.Index("jobs-index");
+  //console.log("Indexing job:", title, description, jobUrl);
+  const index = pinecone.Index("jobs");
   const safeId = hashId(jobUrl);
   console.log("Scraping job with hashed ID:", safeId);
 
-  // Validate inputs
   if (typeof title !== "string" || typeof description !== "string" || typeof jobUrl !== "string") {
     throw new Error("Invalid input: title, description, and jobUrl must be strings");
   }
@@ -266,17 +265,15 @@ async function indexJob(title, description, jobUrl) {
 
   try {
     // Verify index exists
-    const indexDescription = await pinecone.describeIndex("jobs-index");
-    console.log("Index details:", indexDescription);
+    const indexDescription = await pinecone.describeIndex("jobs");
     if (!indexDescription || !indexDescription.status?.ready) {
-      throw new Error("Pinecone index 'jobs-index' is not ready or does not exist");
+      throw new Error("Pinecone index 'jobs' is not ready or does not exist");
     }
 
     // Fetch existing records using manual fetch
     let existing;
     try {
       existing = await manualFetch(indexDescription.host, process.env.PINECONE_API_KEY, safeId);
-      console.log("Fetch result:", existing);
     } catch (fetchErr) {
       throw new Error(`Failed to fetch record: ${fetchErr.message}`);
     }
@@ -285,13 +282,13 @@ async function indexJob(title, description, jobUrl) {
       console.log(`Job already indexed: ${title}`);
       return;
     }
-    console.log('embedding description :',description)
+    //console.log('embedding description :',description)
 
     // Clean text for embedding (Pinecone will auto-embed the 'text' field)
     const text = `${title}\n${description.replace(/\n\s*\n/g, "\n").trim()}`; // Clean excessive newlines
-    console.log("Text for Pinecone embedding:", text.slice(0, 100) + (text.length > 100 ? "..." : ""));
+    //console.log("Text for Pinecone embedding:", text.slice(0, 100) + (text.length > 100 ? "..." : ""));
     const embedding = await getEmbedding(text);
-    console.log("Embedding result:", embedding);
+    //console.log("Embedding result:", embedding);
     // Validate metadata size (includes text for embedding)
     const metadata = { 
       title, 
@@ -307,7 +304,6 @@ async function indexJob(title, description, jobUrl) {
       throw new Error("Metadata exceeds Pinecone's 40KB limit");
     }
 
-    // Upsert to Pinecone (auto-embeds 'text' using llama-text-embed-v2)
     console.log("Upserting data with auto-embedding:", { id: safeId, metadata });
     await index.upsert([
       {
@@ -323,100 +319,6 @@ async function indexJob(title, description, jobUrl) {
     throw err;
   }
 }
-
-/* async function indexJob(title, description, jobUrl) {
-  const index = pinecone.Index("jobs-index");
-  const safeId = hashId(jobUrl);
-  console.log("Scraping job with hashed ID:", safeId);
-
-  // Validate inputs
-  if (typeof title !== "string" || typeof description !== "string" || typeof jobUrl !== "string") {
-    throw new Error("Invalid input: title, description, and jobUrl must be strings");
-  }
-  if (!title || !description || !jobUrl) {
-    throw new Error("Invalid input: title, description, and jobUrl must be non-empty");
-  }
-
-  try {
-    // Verify index exists
-    const indexDescription = await pinecone.describeIndex("jobs-index");
-    console.log("Index details:", indexDescription);
-    if (!indexDescription || !indexDescription.status?.ready) {
-      throw new Error("Pinecone index 'jobs-index' is not ready or does not exist");
-    }
-
-    // Fetch existing records with retry logic
-    let fetchAttempts = 0;
-    const maxAttempts = 3;
-    let existing = null;
-
-    while (fetchAttempts < maxAttempts) {
-      fetchAttempts++;
-      try {
-        console.log(`Fetching record for ID (attempt ${fetchAttempts}):`, safeId);
-        existing = await index.fetch({ ids: [safeId] });
-        console.log("Fetch result:", existing);
-        break; // Success, exit retry loop
-      } catch (fetchErr) {
-        console.error(`Fetch attempt ${fetchAttempts} failed:`, fetchErr.message);
-        if (fetchErr.response) {
-          console.error("Response status:", fetchErr.response.status);
-          console.error("Response data:", fetchErr.response.data);
-        }
-        if (fetchAttempts === maxAttempts) {
-          throw new Error(`Failed to fetch after ${maxAttempts} attempts: ${fetchErr.message}`);
-        }
-        // Exponential backoff
-        await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, fetchAttempts)));
-      }
-    }
-
-    if (existing?.records && Object.keys(existing.records).length > 0) {
-      console.log(`Job already indexed: ${title}`);
-      return;
-    }
-
-    // Generate embedding
-    const text = `${title}\n${description.slice(0, 8000)}`; // Limit description length
-    console.log("Text for embedding:", text);
-    const embedding = await getEmbedding(text);
-    console.log("Embedding result:", embedding);
-
-    // Validate embedding
-    if (!Array.isArray(embedding) || embedding.length === 0) {
-      throw new Error("Invalid embedding: Must be a non-empty array");
-    }
-    if (embedding.length !== indexDescription.dimension) {
-      throw new Error(
-        `Embedding dimension (${embedding.length}) does not match index dimension (${indexDescription.dimension})`
-      );
-    }
-
-    // Validate metadata size
-    const metadata = { title, description, url: jobUrl };
-    const metadataSize = Buffer.byteLength(JSON.stringify(metadata), "utf8");
-    console.log("Metadata size (bytes):", metadataSize);
-    if (metadataSize > 40 * 1024) {
-      throw new Error("Metadata exceeds Pinecone's 40KB limit");
-    }
-
-    // Upsert to Pinecone
-    console.log("Upserting data:", { id: safeId, values: embedding, metadata });
-    await index.upsert([
-      {
-        id: safeId,
-        values: embedding,
-        metadata,
-      },
-    ]);
-
-    console.log(`Indexed job: ${title}`);
-  } catch (err) {
-    console.error(`Failed to index job "${title}" (${jobUrl}):`, err.message, err.stack);
-    throw err; // Re-throw to propagate to caller
-  }
-} */
-
 
 const saveJobsToDB = async(jobs) => {
   console.log('saveJobsToDB called with', jobs.length, 'jobs');
@@ -512,4 +414,4 @@ const saveJobs = async (jobsArray) => {
   }
 };
 
-module.exports={fetchJobListings,saveJobs}
+module.exports={fetchJobListings,saveJobs,indexJob}

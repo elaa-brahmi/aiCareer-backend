@@ -62,7 +62,7 @@ const uploadResumeToSupaBase = async(userId,buffer,originalname) =>{
 }
 
 const  matchResume = async(resumeText) => {
-  const index = pinecone.Index("jobs-index");
+  const index = pinecone.Index("jobs");
 
   const embedding = await getEmbedding(resumeText);
 
@@ -77,7 +77,7 @@ const  matchResume = async(resumeText) => {
     score: match.score,
     title: match.metadata.title,
     description: match.metadata.description,
-  }));
+    url:match.metadata.url  }));
 }
 const extractText = async (fileBuffer) => {
   try {
@@ -106,6 +106,8 @@ const resumeAnalyzer = async(req,res)=> {
       return res.status(400).json({ message: "Resume text could not be extracted" });
     }
     const matches= await matchResume(text)
+    //save to db matches
+
     
     res.json({
       message: "Resume analyzed successfully",

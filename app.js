@@ -20,7 +20,9 @@ const {errorHandler} = require('./scrapers/linkedinScraper/errorHandler')
 const {searchJobs} = require('./scrapers/linkedinScraper/jobController')
 const {saveJobs} = require('./scrapers/linkedinScraper/linkedinService')
 const deleteOldJobs = require('./controllers/jobController')
-const {ResumeRouter} = require('./routers/resumeRouter')
+const {ResumeRouter} = require('./routers/resumeRouter');
+const JobModel = require('./models/job');
+const {indexJob} = require('./scrapers/linkedinScraper/linkedinService')
 // Increase JSON and URL-encoded body size limit
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -74,6 +76,34 @@ app.post('/api/linkedin/search', async(req,res) => {
 });
 app.use(errorHandler)
 app.use('/api/resume',ResumeRouter)
+app.post('/embed',async(req,res) => {
+  //loop through jobs
+  try {
+    const jobs = await JobModel.findAll();
+    const BATCH_SIZE = 5; // adjust between 3–10 depending on memory
+
+    for (let i = 0; i < jobs.length; i += BATCH_SIZE) {
+      const batch = jobs.slice(i, i + BATCH_SIZE);
+
+      console.log(`Embedding batch ${i / BATCH_SIZE + 1}/${Math.ceil(jobs.length / BATCH_SIZE)}...`);
+
+      // Embed this small batch in parallel (safe)
+      await Promise.allSettled(
+        batch.map(job => indexJob(job.title, job.description, job.url))
+      );
+
+      // Force garbage collection (if Node started with --expose-gc)
+      global.gc?.();
+    }
+
+    res.status(200).json({ message: "All jobs embedded successfully." });
+  }
+catch(error){
+  console.log(error)
+  res.status(400).json({message:"error embedding jobs"})
+}
+  
+})
 
 // Endpoint to fetch jobs
 // Cron: runs every 3 days
