@@ -4,7 +4,7 @@ const ResumeModel = require('../models/resume');
 const JobModel = require("../models/job"); 
 const pinecone = require("../config/pineconeClient");
 const { getEmbedding } = require("../embedder");
-//const { pdfParse } = require("pdf-parse");
+const  pdfParse  = require("pdf-parse");
 const resetMonthlyUploads = async() =>{
     try {
         const users = await UserModel.findAll({
@@ -65,6 +65,8 @@ const  matchResume = async(resumeText) => {
   const index = pinecone.Index("jobs");
 
   const embedding = await getEmbedding(resumeText);
+  console.log("resume Embedding length:", embedding.length);
+
 
   const query = await index.query({
     vector: embedding,
@@ -81,7 +83,6 @@ const  matchResume = async(resumeText) => {
 }
 const extractText = async (fileBuffer) => {
   try {
-    const { default: pdfParse } = await import("pdf-parse"); // dynamic import
     const data = await pdfParse(fileBuffer);
     return data.text; // extracted plain text from PDF
   } catch (err) {
@@ -102,14 +103,15 @@ const resumeAnalyzer = async(req,res)=> {
     //analyze logic
     //extract resume text
     const text=await extractText(buffer);
-    if (!resumeText || resumeText.trim().length < 50) {
+    if (!text || text.trim().length < 50) {
       return res.status(400).json({ message: "Resume text could not be extracted" });
     }
+    console.log('resume text ', text)
     const matches= await matchResume(text)
     //save to db matches
 
     
-    res.json({
+    res.status(200).json({
       message: "Resume analyzed successfully",
       matches,
     });
