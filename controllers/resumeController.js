@@ -109,6 +109,7 @@ const resumeAnalyzer = async(req,res)=> {
     console.log('resume text ', text)
     const matches= await matchResume(text)
     //save to db matches
+    
 
     
     res.status(200).json({
