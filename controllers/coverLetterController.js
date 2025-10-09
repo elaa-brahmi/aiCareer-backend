@@ -14,8 +14,8 @@ const hf = new InferenceClient(
 //works but missing infos about the user to be fixed later on
 //maybe add resume
 const generateCoverLetter = async (req, res) => {
-  const { fullName,title, companyName, description, tone, exp, skills } = req.body;
-  const userId="10"
+  const { title,fullName, companyName, description, tone, exp, skills } = req.body;
+  const userId=req.user.id
   const dbUser = await User.findByPk(userId);
 
     if (!dbUser) {
