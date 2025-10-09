@@ -71,7 +71,7 @@ const  matchResume = async(resumeText) => {
 
   const query = await index.query({
     vector: embedding,
-    topK: 10,
+    topK: 15,
     includeMetadata: true,
   });
 
@@ -121,7 +121,13 @@ const resumeAnalyzer = async (req, res) => {
       for (const match of matches) {
         try {
           const details = await getJobDetailsByUrl(match.url);
-          const existingJob = await MatchesJobs.findOne({ where: { url: details.url } });
+          //don't save an existing job for the same userId 
+          const existingJob = await MatchesJobs.findOne({
+            where: {
+              userId: userId,
+              url: details.url
+            }
+          });
           if (existingJob) continue;
 
           await MatchesJobs.create({
