@@ -28,6 +28,8 @@ const generateCoverLetter = async (req, res) => {
         return res.status(400).json({ message: "upgrade plan to generate cover letters" });
 
     }
+    dbUser.uploads_this_month+=1;
+    await dbUser.save()
     const today = new Date();
     const formattedDate = today.toLocaleDateString("en-US", {
       year: "numeric",

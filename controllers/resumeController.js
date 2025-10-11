@@ -6,6 +6,8 @@ const pinecone = require("../config/pineconeClient");
 const { getEmbedding } = require("../embedder");
 const  pdfParse  = require("pdf-parse");
 const MatchesJobs = require('../models/resume_job_matches')
+const { Sequelize } = require('sequelize');
+
 const resetMonthlyUploads = async() =>{
     try {
         const users = await UserModel.findAll({
@@ -101,6 +103,15 @@ const resumeAnalyzer = async (req, res) => {
     console.log("Received file:", req.file.originalname);
     const { originalname, buffer } = req.file;
     const userId = req.user?.id;
+    //impede free plan users from uploading more than 
+    const user = req.user
+    if(user.plan==='free' && user.uploads_this_month>=5){
+      return res.status(400).json({message:'uploads exceeded 5 , upgrade to premium '})
+    }
+    //add to uploads resumes count 
+    user.uploads_this_month+=1;
+    await user.save()
+
 
     const resumeId = await uploadResumeToSupaBase(userId, buffer, originalname);
 
@@ -222,4 +233,24 @@ const deleteResume = async(req,res) => {
   }
 
 }
-module.exports={resetMonthlyUploads,resumeAnalyzer,getUserResumes,deleteResume}
+const getUserMatches = async(req,res) => {
+  const id=req.user.id
+  try{
+    const matches = await MatchesJobs.findAll({
+      where: { userId: id },
+      order: [
+        ['score', 'DESC'],
+        ['postedAt','DESC']
+      ],
+      
+    });
+    if (!matches || matches.length === 0) {
+      return res.status(200).json([]);
+    }
+    return res.status(200).json({matches:matches})
+  }catch(error){
+    console.log(error)
+    return res.status(400).json({message:'error finding jobs'})
+  }
+}
+module.exports={resetMonthlyUploads,resumeAnalyzer,getUserResumes,deleteResume,getUserMatches}
