@@ -56,7 +56,7 @@ const MatchesJobs = sequelize.define(
 
         },
         postedAt:{
-            type: DataTypes.STRING(255),
+            type: DataTypes.DATE,
             allowNull: true,
         },
         score:{
