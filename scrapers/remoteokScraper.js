@@ -29,7 +29,7 @@ const fetchJobs = async() => {
       description: job.description || "",
       company: job.company,
       location: job.location || "",
-      url: `https://remoteok.com${job.url}`,
+      url: `${job.url}`,
       posted_at: new Date(job.date),
       source: SOURCE,
     }));
