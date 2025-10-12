@@ -203,27 +203,7 @@ const deleteResume = async(req,res) => {
   }
 
 }
-/* const getUserMatches = async(req,res) => {
-  const id=req.user.id
-  try{
-    const matches = await MatchesJobs.findAll({
-      where: { userId: id },
-      order: [
-        ['score', 'DESC'],
-        ['postedAt','DESC']
-      ],
-      
-    });
-    if (!matches || matches.length === 0) {
-      return res.status(200).json([]);
-    }
-    return res.status(200).json({matches:matches})
-  }catch(error){
-    console.log(error)
-    return res.status(400).json({message:'error finding jobs'})
-  }
-} */
-  const getUserMatches = async (req, res) => {
+const getUserMatches = async (req, res) => {
     const userId = req.user.id;
     try {
       // Extract pagination params from query (default: page 1, 6 items per page)
@@ -262,6 +242,6 @@ const deleteResume = async(req,res) => {
       console.error("Error fetching user matches:", error);
       return res.status(400).json({ message: "Error finding jobs" });
     }
-  };
+};
   
 module.exports={resumeAnalyzer,getUserResumes,deleteResume,getUserMatches}
