@@ -25,6 +25,19 @@ const UserModel = sequelize.define(
         isEmail: true,
       },
     },
+    last_reset_weekly_covers: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: Date.now()
+
+  },
+  last_reset_monthly_resume_upload: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: Date.now()
+
+
+  },
     accessToken: {type: DataTypes.STRING(255), default:""},
     password_hash: {
       type: DataTypes.STRING(255),
