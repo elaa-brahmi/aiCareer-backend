@@ -178,10 +178,69 @@ const getUserById = async(req,res) => {
 
 
 
+const resetUserCounters = async () => {
+  try {
+    const now = new Date();
+
+    // Fetch all users 
+    const users = await UserModel.findAll();
+
+    if (users.length === 0) {
+      console.log('No users found');
+      return { message: 'No users found' };
+    }
+
+    let weeklyResets = 0;
+    let monthlyResets = 0;
+
+    for (const user of users) {
+      const lastWeeklyReset = user.last_reset_weekly_covers || new Date(0);
+      const lastMonthlyReset = user.last_reset_monthly_resume_upload || new Date(0);
+
+      const diffWeeklyDays = Math.floor((now - lastWeeklyReset) / (1000 * 60 * 60 * 24));
+      const diffMonthlyDays = Math.floor((now - lastMonthlyReset) / (1000 * 60 * 60 * 24));
+
+      // Reset weekly cover letters
+      if (diffWeeklyDays >= 7) {
+        user.cover_letters_this_week = 0;
+        user.last_reset_weekly_covers = now;
+        weeklyResets++;
+      }
+
+      // Reset monthly resumes
+      if (diffMonthlyDays >= 30) {
+        user.uploads_this_month = 0;
+        user.last_reset_monthly_resume_upload = now;
+        monthlyResets++;
+      }
+
+      await user.save();
+    }
+
+    console.log(
+      `Reset complete: ${weeklyResets} weekly cover letters, ${monthlyResets} monthly resumes.`
+    );
+
+    return {
+      message: 'User counters reset successfully',
+      weeklyResets,
+      monthlyResets
+    };
+  } catch (error) {
+    console.error(' Error resetting user counters:', error.message);
+    throw new Error('Error while resetting user counters');
+  }
+};
+
+
+
+
+
 
 module.exports = {
     getUserById,
     verifyPlanExpiration,
+    resetUserCounters,
     signUp,
     login,
     OauthLogin,
