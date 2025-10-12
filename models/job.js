@@ -47,6 +47,7 @@ const JobModel = sequelize.define(
             type: DataTypes.DATE,
             allowNull: true,
         },
+       
         source: {
             type: DataTypes.STRING(255),
             allowNull: true,
