@@ -203,7 +203,7 @@ const deleteResume = async(req,res) => {
   }
 
 }
-const getUserMatches = async(req,res) => {
+/* const getUserMatches = async(req,res) => {
   const id=req.user.id
   try{
     const matches = await MatchesJobs.findAll({
@@ -222,5 +222,46 @@ const getUserMatches = async(req,res) => {
     console.log(error)
     return res.status(400).json({message:'error finding jobs'})
   }
-}
+} */
+  const getUserMatches = async (req, res) => {
+    const userId = req.user.id;
+    try {
+      // Extract pagination params from query (default: page 1, 6 items per page)
+      const page = parseInt(req.query.page, 10) || 1;
+      const limit = parseInt(req.query.limit, 6) || 6;
+      const offset = (page - 1) * limit;
+  
+      // Fetch total count for pagination metadata
+      const totalCount = await MatchesJobs.count({
+        where: { userId }
+      });
+  
+      // Fetch paginated results
+      const matches = await MatchesJobs.findAll({
+        where: { userId },
+        order: [
+          ['score', 'DESC'],
+          ['postedAt', 'DESC']
+        ],
+        limit,
+        offset,
+      });
+  
+      return res.status(200).json({
+        matches,
+        pagination: {
+          total: totalCount,
+          page,
+          limit,
+          totalPages: Math.ceil(totalCount / limit),
+          hasNextPage: page * limit < totalCount,
+          hasPrevPage: page > 1
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching user matches:", error);
+      return res.status(400).json({ message: "Error finding jobs" });
+    }
+  };
+  
 module.exports={resumeAnalyzer,getUserResumes,deleteResume,getUserMatches}
