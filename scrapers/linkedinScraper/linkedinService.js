@@ -9,6 +9,7 @@ const {hashId} = require('../../utilities/hash')
 const axios = require("axios");
 const dotenv = require("dotenv");
 dotenv.config();
+//unused function replaced with n8n automation
 const fetchJobListings = async(keywords, location = '', dateSincePosted = '') => {
   let browser;
   try {
@@ -350,7 +351,7 @@ const saveJobsToDB = async(jobs) => {
   console.log(`${savedCount} new jobs from LinkedIn processed and stored. ${duplicateCount} duplicates skipped.`);
 }
 
-const constructSearchUrl = (keywords, location = '', dateSincePosted = '') => {
+/* const constructSearchUrl = (keywords, location = '', dateSincePosted = '') => {
   const baseUrl = 'https://www.linkedin.com/jobs/search';
   const params = new URLSearchParams({
     keywords: keywords,
@@ -367,7 +368,7 @@ const constructSearchUrl = (keywords, location = '', dateSincePosted = '') => {
   }
 
   return `${baseUrl}?${params.toString()}`;
-}
+} */
 
 const saveJobs = async (jobsArray) => {
   try {
