@@ -8,7 +8,7 @@ const deleteOldJobs = async () => {
       const deletedCount = await JobModel.destroy({
         where: {
           posted_at: {
-            [Op.lt]: cutoffDate, // posted_at < cutoffDate
+            [Op.lt]: cutoffDate, 
           },
         },
       });
