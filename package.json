@@ -27,6 +27,7 @@
     "playwright": "^1.55.0",
     "puppeteer": "^24.22.3",
     "sequelize": "^6.37.7",
+    "socket.io": "^4.8.1",
     "stripe": "^18.5.0"
   },
   "devDependencies": {
