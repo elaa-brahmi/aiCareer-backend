@@ -2,6 +2,9 @@ require('dotenv').config();
 const express = require('express')
 const app = express()
 const port = 9090
+const http = require("http");
+
+const { Server } = require("socket.io");
 const cors = require("cors");
 const {sequelize, testConnection} = require('./config/db');
 const authRouter = require('./routers/authRouter')
@@ -31,7 +34,21 @@ app.use(
       ],
       credentials: true,
     })
-  );  
+  );
+  const server = http.createServer(app);
+
+  // Configure Socket.IO
+  const io = new Server(server, {
+    cors: {
+      origin: process.env.FRONTEND_URL,
+      methods: ["GET", "POST"],
+      credentials: true,
+    },
+  });
+  
+  exports.io = io;
+  
+  app.set("io", io);  
   (async () => {
     try {
       await sequelize.sync({ alter: true }); // or .sync() if schema is correct
