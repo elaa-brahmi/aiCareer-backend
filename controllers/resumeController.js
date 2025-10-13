@@ -4,7 +4,9 @@ const JobModel = require("../models/job");
 const pinecone = require("../config/pineconeClient");
 const { getEmbedding } = require("../embedder");
 const  pdfParse  = require("pdf-parse");
-const MatchesJobs = require('../models/resume_job_matches')
+const MatchesJobs = require('../models/resume_job_matches');
+const UserModel = require('../models/user');
+const {sendNotification} = require('./notificationController')
 
 const uploadResumeToSupaBase = async(userId,buffer,originalname) =>{
   const fileName = `users/${userId}/resumes/resume_${Date.now()}.pdf`;
@@ -34,7 +36,7 @@ const uploadResumeToSupaBase = async(userId,buffer,originalname) =>{
   return savedResume.id;
 }
 
-const  matchResume = async(resumeText) => {
+const matchResume = async(resumeText) => {
   const index = pinecone.Index("jobs");
 
   const embedding = await getEmbedding(resumeText);
@@ -243,5 +245,92 @@ const getUserMatches = async (req, res) => {
       return res.status(400).json({ message: "Error finding jobs" });
     }
 };
+//this will be cron function to update user's matching jobs and alert the user with new matches 
+const updateUserMatches = async(req,res) => {
+  try {
+  const users = await UserModel.findAll()
+  for(const user of users){
+    // Get all resumes for this user
+    const userResumes = await ResumeModel.findAll({
+      where: { userId: user.id },
+      attributes: ['id', 'generatedUrl', 'fileName'],
+    });
+
+    if (!userResumes.length) {
+      console.log(`No resumes for user ${user.id}`);
+      continue;
+    }
+      for (const resume of userResumes){
+        //we have generatedurl of the project in supabase get the file , extract text and get matches
+
+        // Download PDF from Supabase public URL
+        try {
+        let newJobs=0
+        const response = await axios.get(resume.generatedUrl, {
+          responseType: 'arraybuffer',
+        });
+
+        const fileBuffer = Buffer.from(response.data, 'binary');
+        const resumeText = await extractText(fileBuffer);
+
+        if (!resumeText || resumeText.trim().length < 50) {
+          console.log(`Skipping resume ${resume.id} (too short or unreadable)`);
+          continue;
+        }
+         // Get updated matches from Pinecone
+         const matches = await matchResume(resumeText);
+         console.log(`Found ${matches.length} new matches for user ${user.id}`);
+         // Save new matches (avoid duplicates)
+         for (const match of matches) {
+          const jobDetails = await getJobDetailsByUrl(match.url);
+          if (!jobDetails) continue;
+
+          const existing = await MatchesJobs.findOne({
+            where: {
+              userId: user.id,
+              jobId: jobDetails.jobID,
+              url: jobDetails.url
+            },
+          });
+          if (existing) continue;
+          //notify the user of how many new matches
+          newJobs++;
+          await MatchesJobs.create({
+            score: match.score * 100,
+            resumeId: resume.id,
+            userId: user.id,
+            jobId: jobDetails.jobID,
+            title: jobDetails.title,
+            description: jobDetails.description,
+            url: jobDetails.url,
+            company: jobDetails.companyName,
+            location: jobDetails.location,
+            companyLogo: jobDetails.companyLogo,
+            postedAt: jobDetails.postedAt,
+          });
+        }
+        //send notification
+        if(newJobs > 0){
+          console.log('a new job alert')
+          await sendNotification(user.id,`you received ${newJobs} new job matches`)
+        }
+
+
+        console.log(` Updated matches for user ${user.id}`);
+      } catch (resumeError) {
+        console.error(`Error processing resume ${resume.id}:`, resumeError.message);
+      }
+    }
+  }
+    console.log(" Completed updateUserMatches cron job.");
+    return res.status(200).json({ message: "All user matches updated successfully." });
+  } catch (error) {
+    console.error(" updateUserMatches global error:", error.message);
+    return res.status(500).json({ message: "Error updating user matches" });
+  }
+
+
+}
   
-module.exports={resumeAnalyzer,getUserResumes,deleteResume,getUserMatches}
+  
+module.exports={resumeAnalyzer,getUserResumes,deleteResume,updateUserMatches,getUserMatches}
