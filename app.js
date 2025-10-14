@@ -3,7 +3,8 @@ const express = require('express')
 const app = express()
 const port = 9090
 const http = require("http");
-
+const { initSocket } = require("./config/socket")
+const {UserSockets} = require('./socket/socket')
 const { Server } = require("socket.io");
 const cors = require("cors");
 const {sequelize, testConnection} = require('./config/db');
@@ -35,20 +36,14 @@ app.use(
       credentials: true,
     })
   );
-  const server = http.createServer(app);
+  
+////////////socket////////////// 
+const server = http.createServer(app);
+const io = initSocket(server);
+UserSockets(io);
 
-  // Configure Socket.IO
-  const io = new Server(server, {
-    cors: {
-      origin: process.env.FRONTEND_URL,
-      methods: ["GET", "POST"],
-      credentials: true,
-    },
-  });
-  
-  exports.io = io;
-  
-  app.set("io", io);  
+app.set("io", io);
+module.exports = server; // no circular export anymore
   (async () => {
     try {
       await sequelize.sync({ alter: true }); // or .sync() if schema is correct
