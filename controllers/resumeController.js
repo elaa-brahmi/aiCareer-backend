@@ -7,6 +7,7 @@ const  pdfParse  = require("pdf-parse");
 const MatchesJobs = require('../models/resume_job_matches');
 const UserModel = require('../models/user');
 const {sendNotification} = require('./notificationController')
+const axios = require('axios')
 
 const uploadResumeToSupaBase = async(userId,buffer,originalname) =>{
   const fileName = `users/${userId}/resumes/resume_${Date.now()}.pdf`;
@@ -312,7 +313,10 @@ const updateUserMatches = async(req,res) => {
         //send notification
         if(newJobs > 0){
           console.log('a new job alert')
-          await sendNotification(user.id,`you received ${newJobs} new job matches`)
+          await sendNotification(user.id,`you received ${newJobs} new job matches on your resume ${resume.fileName}`)
+        }
+        else{
+          console.log(`no new matches found for user having id ${user.id}`)
         }
 
 
@@ -323,10 +327,8 @@ const updateUserMatches = async(req,res) => {
     }
   }
     console.log(" Completed updateUserMatches cron job.");
-    return res.status(200).json({ message: "All user matches updated successfully." });
   } catch (error) {
-    console.error(" updateUserMatches global error:", error.message);
-    return res.status(500).json({ message: "Error updating user matches" });
+    console.error(" updateUserMatches global error:", error);
   }
 
 
