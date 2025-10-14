@@ -46,6 +46,7 @@ UserSockets(io);
 
 app.set("io", io);
 module.exports = server; // no circular export anymore
+/////////sync db //////////
   (async () => {
     try {
       await sequelize.sync({ alter: true }); // or .sync() if schema is correct
@@ -54,13 +55,16 @@ module.exports = server; // no circular export anymore
       console.error('Sequelize sync failed:', e);
     }
   })();
+/////////////attaching routers///////////////////////
 app.use('/notification',NotificationRouter)
 app.use('/api/auth', authRouter )
 app.use('/api/v1/payment', paymentRouter)
 app.use('/api/coverLetter',CoverLetterRouter)
 app.use('/api/users', userRouter)
 app.use('/api/scrape', scraperRouter)
-//response from n8n jobs automation
+app.use('/api/resume',ResumeRouter)
+
+//////response from n8n jobs automation//////
 app.post('/api/linkedin/search', async(req,res) => {
   console.log("data received from linkedin search")
   //console.log(req.body.jobs)
@@ -75,8 +79,9 @@ app.post('/api/linkedin/search', async(req,res) => {
   }
 });
 app.use(errorHandler)
-app.use('/api/resume',ResumeRouter)
-app.post('/embed',async(req,res) => {
+
+
+/* app.post('/embed',async(req,res) => {
   //loop through jobs
   try {
     const jobs = await JobModel.findAll();
@@ -103,7 +108,11 @@ catch(error){
   res.status(400).json({message:"error embedding jobs"})
 }
   
-})
+}) */
+
+///////////////////////cron jobs//////////////////
+
+
 // Cron: runs each day to update user matches
 cron.schedule('52 18 * * *', async () => {
   console.log("Cron job running: updating users matches...");
@@ -132,6 +141,7 @@ cron.schedule('0 0 */2 * *', () => {
   console.log(' Running scheduled cleanup for old jobs...');
   deleteOldJobs();
 });
+//attach socket to server
 server.listen(port, () => {
     console.log(`http://localhost:${port}`);
   });
