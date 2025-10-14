@@ -27,6 +27,8 @@ const {indexJob} = require('./scrapers/linkedinScraper/linkedinService')
 // Increase JSON and URL-encoded body size limit
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
+const NotificationRouter = require('./routers/notificationRouter')
+const {updateUserMatches} = require('./controllers/resumeController')
 app.use(express.json());
 app.use(
     cors({
@@ -52,11 +54,13 @@ module.exports = server; // no circular export anymore
       console.error('Sequelize sync failed:', e);
     }
   })();
+app.use('/notification',NotificationRouter)
 app.use('/api/auth', authRouter )
 app.use('/api/v1/payment', paymentRouter)
 app.use('/api/coverLetter',CoverLetterRouter)
 app.use('/api/users', userRouter)
 app.use('/api/scrape', scraperRouter)
+//response from n8n jobs automation
 app.post('/api/linkedin/search', async(req,res) => {
   console.log("data received from linkedin search")
   //console.log(req.body.jobs)
@@ -100,6 +104,12 @@ catch(error){
 }
   
 })
+// Cron: runs each day to update user matches
+cron.schedule('52 18 * * *', async () => {
+  console.log("Cron job running: updating users matches...");
+  await updateUserMatches();
+});
+
 
 // Cron: runs every 3 days to update jobs from remoteOk
   cron.schedule('0 0 */3 * *', async () => {
