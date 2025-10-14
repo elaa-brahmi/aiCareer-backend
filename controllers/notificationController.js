@@ -2,14 +2,13 @@ const { getIO } = require("../config/socket");
 const {getConnectedSocketByUserId} = require('../socket/socket')
 const notificationModel = require('../models/notification')
 const sendNotification = async (userId, message) => {
+  console.log('entering send notifs function')
     const io = getIO();
     console.log('user id from send notifs',userId)
     const notification = await notificationModel.create({
         userId: userId,
         message,
       });
-      
-  
     const connectedSocket = getConnectedSocketByUserId(userId);
     console.log('connected socket',connectedSocket)
   
