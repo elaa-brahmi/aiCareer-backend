@@ -39,7 +39,7 @@ const getConnectedUsers = () => {
 };
 
 const addUser = (socketId, userId) => {
-  const normalizedId = userId.toString();  // ensure string
+  const normalizedId = userId.toString();
   if (!connectedUsers.some((u) => u.socketId === socketId)) {
     connectedUsers.push({ socketId, userId: normalizedId });
     console.log(" Added user:", { socketId: socketId, userId });
