@@ -132,6 +132,6 @@ cron.schedule('0 0 */2 * *', () => {
   console.log(' Running scheduled cleanup for old jobs...');
   deleteOldJobs();
 });
-app.listen(port, () => {
+server.listen(port, () => {
     console.log(`http://localhost:${port}`);
   });
