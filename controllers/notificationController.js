@@ -1,7 +1,8 @@
-const { io } = require("../app");
+const { getIO } = require("../config/socket");
 const {getConnectedSocketByUserId} = require('../socket/socket')
 const notificationModel = require('../models/notification')
 const sendNotification = async (userId, message) => {
+    const io = getIO();
     console.log('user id from send notifs',userId)
     const notification = await notificationModel.create({
         userId: userId,
