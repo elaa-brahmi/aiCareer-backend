@@ -4,8 +4,7 @@ const JobModel = sequelize.define(
     'Job',
     {
         id: {
-          type: DataTypes.INTEGER,
-          autoIncrement: true,
+          type: DataTypes.BIGINT,
           primaryKey: true,
         },
         title: {
@@ -28,6 +27,18 @@ const JobModel = sequelize.define(
             type: DataTypes.STRING(255),
             allowNull: true,
         },
+        applyUrl: {
+            type: DataTypes.STRING(255),
+            allowNull: true,
+        },
+        companyLogo: {
+            type: DataTypes.STRING(255),
+            allowNull: true,
+        },
+        companyLinkedinUrl: {
+            type: DataTypes.STRING(255),
+            allowNull: true,
+        },
         created_at: {
             type: DataTypes.DATE,
             allowNull: true,
@@ -36,6 +47,7 @@ const JobModel = sequelize.define(
             type: DataTypes.DATE,
             allowNull: true,
         },
+       
         source: {
             type: DataTypes.STRING(255),
             allowNull: true,

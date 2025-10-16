@@ -1,6 +1,5 @@
 const dotenv = require("dotenv");
 const { InferenceClient } = require("@huggingface/inference");
-const fs = require("fs");
 const PDFDocument = require("pdfkit");
 dotenv.config();
 const supabase = require('../config/supabase'); 
@@ -14,8 +13,8 @@ const hf = new InferenceClient(
 //works but missing infos about the user to be fixed later on
 //maybe add resume
 const generateCoverLetter = async (req, res) => {
-  const { fullName,title, companyName, description, tone, exp, skills } = req.body;
-  const userId="10"
+  const { title,fullName, companyName, description, tone, exp, skills } = req.body;
+  const userId=req.user.id
   const dbUser = await User.findByPk(userId);
 
     if (!dbUser) {
@@ -28,6 +27,8 @@ const generateCoverLetter = async (req, res) => {
         return res.status(400).json({ message: "upgrade plan to generate cover letters" });
 
     }
+    dbUser.cover_letters_this_week+=1;
+    await dbUser.save()
     const today = new Date();
     const formattedDate = today.toLocaleDateString("en-US", {
       year: "numeric",
@@ -70,7 +71,7 @@ const generateCoverLetter = async (req, res) => {
         userId: userId,
         title: title,
         companyName: companyName,
-        generatedUrl: publicUrl,  // <-- use Supabase public URL here
+        generatedUrl: publicUrl,  //  use Supabase public URL here
       });
     return res.status(200).json({
     message: "Cover letter generated and uploaded successfully",
@@ -110,34 +111,7 @@ const getCoverLettersByUser = async (req,res) => {
     }
 
 }
-const resetWeeklyCoverLetters = async() =>{
-    try {
-        const users = await UserModel.findAll({
-          where: {
-            status: 'inactive',
-            plan: 'free',
-          }
-        });
-        if (users.length === 0) {
-          console.log('No users found');
-          return { message: 'No  users found' };
-        }
-    
-        for (const user of users) {
-          user.cover_letters_this_week = 0;
-          await user.save();
-        
-        }
-    
-        return {
-          message: `${users.length} users reset cover letters this week`,
-          count: users.length
-        };
-      } catch (error) {
-        console.error('Error resetting cover letters this week:', error.message);
-        throw new Error('Error while verifying resetting cover letters');
-      }
-}
+
 
 async function uploadPDFBuffer(userId, generatedText) {
     const pdfDoc = new PDFDocument();
@@ -183,4 +157,4 @@ async function uploadPDFBuffer(userId, generatedText) {
   
 
 
-module.exports = { generateCoverLetter, getCoverLettersByUser, resetWeeklyCoverLetters };
+module.exports = { generateCoverLetter, getCoverLettersByUser };

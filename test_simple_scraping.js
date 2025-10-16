@@ -1,4 +1,4 @@
-const axios = require('axios');
+/* const axios = require('axios');
 
 const BASE_URL = 'http://localhost:9090';
 
@@ -36,3 +36,4 @@ testSimpleScraping().then(() => {
 }).catch(error => {
   console.error('Test execution failed:', error);
 });
+ */
