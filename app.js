@@ -46,6 +46,8 @@ UserSockets(io);
 
 app.set("io", io);
 module.exports = server; // no circular export anymore
+
+
 /////////sync db //////////
   (async () => {
     try {
@@ -55,6 +57,8 @@ module.exports = server; // no circular export anymore
       console.error('Sequelize sync failed:', e);
     }
   })();
+
+
 /////////////attaching routers///////////////////////
 app.use('/notification',NotificationRouter)
 app.use('/api/auth', authRouter )
@@ -113,8 +117,8 @@ catch(error){
 ///////////////////////cron jobs//////////////////
 
 
-// Cron: runs each day to update user matches
-cron.schedule('52 18 * * *', async () => {
+// Cron: runs each day to update user matches and get new matches
+cron.schedule('0 0 */1 * *', async () => {
   console.log("Cron job running: updating users matches...");
   await updateUserMatches();
 });
@@ -130,14 +134,14 @@ cron.schedule("0 0 5 * * *", async () => {
   console.log("Running daily plan expiration cron job...");
   await verifyPlanExpiration();
 });
-//cron runs at 2 am to reset user counters
+//cron runs at 2 am to reset user counters(resume nd cover letters generation)
 cron.schedule("0 2 * * *", async () => {
   console.log("Running daily reset check...");
   await resetUserCounters();
 });
 
 //cron run each 2 days to delete jobs having posted date more than a month 
-cron.schedule('0 0 */2 * *', () => {
+cron.schedule('0 6 */2 * *', () => {
   console.log(' Running scheduled cleanup for old jobs...');
   deleteOldJobs();
 });
