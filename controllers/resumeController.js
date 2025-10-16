@@ -314,6 +314,7 @@ const updateUserMatches = async(req,res) => {
         if(newJobs > 0){
           console.log('a new job alert')
           await sendNotification(user.id,`you received ${newJobs} new job matches on your resume ${resume.fileName}`)
+          
         }
         else{
           console.log(`no new matches found for user having id ${user.id}`)
