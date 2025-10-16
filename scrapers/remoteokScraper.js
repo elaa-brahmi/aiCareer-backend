@@ -3,6 +3,9 @@ const { InferenceClient } = require("@huggingface/inference");
 const fetch = require("node-fetch");
 const JobModel = require("../models/job"); // your Job model
 const { Op } = require('sequelize');
+const pinecone = require("../config/pineconeClient");
+const { getEmbedding } = require("../embedder");
+const { v4: uuidv4 } = require('uuid');
 dotenv.config();
 const SOURCE = "remoteok";
 const hf = new InferenceClient(
@@ -26,7 +29,7 @@ const fetchJobs = async() => {
       description: job.description || "",
       company: job.company,
       location: job.location || "",
-      url: `https://remoteok.com${job.url}`,
+      url: `${job.url}`,
       posted_at: new Date(job.date),
       source: SOURCE,
     }));
@@ -68,7 +71,7 @@ const  saveJobsToDB = async(jobs) =>{
           
               const generatedText = response.choices?.[0]?.message?.content || "";
               console.log('generated job description',generatedText)
-              await JobModel.create({ ...job,  description: generatedText, created_at: new Date() });
+              await JobModel.create({ ...job, id:uuidv4(),  description: generatedText, created_at: new Date() });
 
 
         }
@@ -79,12 +82,53 @@ const  saveJobsToDB = async(jobs) =>{
   }
   console.log(`${jobs.length} jobs from remoteok processed and stored.`);
 }
+async function indexJob(title, description, jobId) {
+  const index = pinecone.Index("jobs-index");
+
+  let alreadyIndexed = false;
+
+  try {
+    const existing = await index.fetch({ ids: [jobId] });
+
+    if (existing?.records && Object.keys(existing.records).length > 0) {
+      console.log(`Job already indexed: ${title}`);
+      alreadyIndexed = true;
+    }
+  } catch (err) {
+    console.error(`Pinecone fetch failed for jobId=${jobId}:`, err.message);
+    // Don’t block indexing if fetch fails — assume not indexed
+  }
+
+  if (alreadyIndexed) return;
+
+  try {
+    const text = `${title}\n${description}`;
+    const embedding = await getEmbedding(text);
+
+    await index.upsert([
+      {
+        id: jobId, // stable ID, e.g. job.url
+        values: embedding,
+        metadata: { title, description },
+      },
+    ]);
+
+    console.log(`Indexed job: ${title}`);
+  } catch (err) {
+    console.error(`Failed to index job "${title}" (${jobId}):`, err.message);
+  }
+}
+
 
 // Main function to fetch + save
 const updateJobs = async()  => {
   console.log("Fetching jobs from RemoteOK...");
   const jobs = await fetchJobs();
   await saveJobsToDB(jobs);
+  for (const job of jobs) {
+    // Index into Pinecone (use url as unique id)
+    await indexJob(job.title, job.description, job.url);
+  }
   console.log("Job update completed.");
 }
 const  getAllJobs = async(req,res) =>{
