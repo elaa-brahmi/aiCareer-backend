@@ -1,2 +1,6 @@
 .env
 node_modules
+# Ignore large CSV data
+data/linkedin_job_postings.csv
+data/ai_job_dataset.csv
+data/cleaned_jobs.json
