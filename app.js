@@ -9,6 +9,7 @@ const { Server } = require("socket.io");
 const cors = require("cors");
 const {sequelize, testConnection} = require('./config/db');
 const authRouter = require('./routers/authRouter')
+const {ChatRouter} = require('./routers/chatRouter')
 const paymentRouter = require('./routers/paymentRouter')
 const { verifyPlanExpiration ,resetUserCounters} = require("./controllers/userController"); 
 const CoverLetterRouter = require('./routers/coverLetter')
@@ -67,6 +68,7 @@ app.use('/api/coverLetter',CoverLetterRouter)
 app.use('/api/users', userRouter)
 app.use('/api/scrape', scraperRouter)
 app.use('/api/resume',ResumeRouter)
+app.use('/api/chat',ChatRouter)
 
 //////response from n8n jobs automation//////
 app.post('/api/linkedin/search', async(req,res) => {
