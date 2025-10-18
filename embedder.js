@@ -20,4 +20,6 @@ async function getEmbedding(text) {
   return Array.from(output.data);
 }
 
+
+
 module.exports = { getEmbedding };
