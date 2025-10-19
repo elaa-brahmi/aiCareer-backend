@@ -25,7 +25,6 @@ const embed_user_query = async(req,res) => {
           topK: 15,
           includeMetadata: true,
         });
-      
         return query.matches */
         return res.status(200).json({msg:'msg received'})
 

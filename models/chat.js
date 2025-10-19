@@ -32,6 +32,4 @@ const chatModel = sequelize.define(
     timestamps: false,
   }
 );
-
-
 module.exports = chatModel;
