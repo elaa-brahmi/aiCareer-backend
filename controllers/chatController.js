@@ -1,6 +1,7 @@
 const { getEmbedding } = require("../embedder");
 const pinecone = require("../config/pineconeClient");
-const chatModel = require('../models/chat')
+const chatModel = require('../models/chat');
+const UserModel = require("../models/user");
 require('dotenv').config();
 
 const generate_response = async(context,userQuestion )=>{
@@ -45,6 +46,13 @@ const generate_response = async(context,userQuestion )=>{
 const embed_user_query = async (req, res) => {
     try {
       const { msg } = req.body;
+      const allMessages = await chatModel.findAll({
+        where:{userId:req.user.id}
+      })
+      const user = await UserModel.findByPk(req.user.id)
+      if(user.plan=='free' && user.status=='inactive' && allMessages.length>=30){
+        return res.status(400).json({message:'you hit the limit please upgrade to premium'})
+      }
   
       // Save user message
       await chatModel.create({
