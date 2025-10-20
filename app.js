@@ -50,14 +50,14 @@ module.exports = server; // no circular export anymore
 
 
 /////////sync db //////////
-  (async () => {
+  /* (async () => {
     try {
       await sequelize.sync({ alter: true }); // or .sync() if schema is correct
       console.log('Sequelize models synced');
     } catch (e) {
       console.error('Sequelize sync failed:', e);
     }
-  })();
+  })(); */
 
 
 /////////////attaching routers///////////////////////
