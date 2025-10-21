@@ -6,9 +6,14 @@ const http = require("http");
 const { initSocket } = require("./config/socket")
 const {UserSockets} = require('./socket/socket')
 const { Server } = require("socket.io");
+const http = require("http");
+const { initSocket } = require("./config/socket")
+const {UserSockets} = require('./socket/socket')
+const { Server } = require("socket.io");
 const cors = require("cors");
 const {sequelize, testConnection} = require('./config/db');
 const authRouter = require('./routers/authRouter')
+const {ChatRouter} = require('./routers/chatRouter')
 const paymentRouter = require('./routers/paymentRouter')
 const { verifyPlanExpiration ,resetUserCounters} = require("./controllers/userController"); 
 const CoverLetterRouter = require('./routers/coverLetter')
@@ -49,14 +54,14 @@ module.exports = server; // no circular export anymore
 
 
 /////////sync db //////////
-  (async () => {
+   (async () => {
     try {
       await sequelize.sync({ alter: true }); // or .sync() if schema is correct
       console.log('Sequelize models synced');
     } catch (e) {
       console.error('Sequelize sync failed:', e);
     }
-  })();
+  })(); 
 
 
 /////////////attaching routers///////////////////////
@@ -67,6 +72,7 @@ app.use('/api/coverLetter',CoverLetterRouter)
 app.use('/api/users', userRouter)
 app.use('/api/scrape', scraperRouter)
 app.use('/api/resume',ResumeRouter)
+app.use('/api/chat',ChatRouter)
 
 //////response from n8n jobs automation//////
 app.post('/api/linkedin/search', async(req,res) => {
@@ -84,35 +90,6 @@ app.post('/api/linkedin/search', async(req,res) => {
 });
 app.use(errorHandler)
 
-
-/* app.post('/embed',async(req,res) => {
-  //loop through jobs
-  try {
-    const jobs = await JobModel.findAll();
-    const BATCH_SIZE = 5; // adjust between 3–10 depending on memory
-
-    for (let i = 0; i < jobs.length; i += BATCH_SIZE) {
-      const batch = jobs.slice(i, i + BATCH_SIZE);
-
-      console.log(`Embedding batch ${i / BATCH_SIZE + 1}/${Math.ceil(jobs.length / BATCH_SIZE)}...`);
-
-      // Embed this small batch in parallel (safe)
-      await Promise.allSettled(
-        batch.map(job => indexJob(job.title, job.description, job.url))
-      );
-
-      // Force garbage collection (if Node started with --expose-gc)
-      global.gc?.();
-    }
-
-    res.status(200).json({ message: "All jobs embedded successfully." });
-  }
-catch(error){
-  console.log(error)
-  res.status(400).json({message:"error embedding jobs"})
-}
-  
-}) */
 
 ///////////////////////cron jobs//////////////////
 
