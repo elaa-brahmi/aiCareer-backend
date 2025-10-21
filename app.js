@@ -2,10 +2,7 @@ require('dotenv').config();
 const express = require('express')
 const app = express()
 const port = 9090
-const http = require("http");
-const { initSocket } = require("./config/socket")
-const {UserSockets} = require('./socket/socket')
-const { Server } = require("socket.io");
+
 const http = require("http");
 const { initSocket } = require("./config/socket")
 const {UserSockets} = require('./socket/socket')
