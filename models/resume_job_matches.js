@@ -61,7 +61,7 @@ const MatchesJobs = sequelize.define(
         },
         score:{
             type: DataTypes.FLOAT,
-        }
+        },
 
     },
     {
