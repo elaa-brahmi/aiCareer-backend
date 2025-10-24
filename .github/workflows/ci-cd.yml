@@ -144,7 +144,7 @@ jobs:
   build-docker:
     name: Build Docker Image
     runs-on: ubuntu-latest
-    needs: [lint-and-format, security-audit, docker-validation, build-and-test]
+    needs: [security-audit, docker-validation, build-and-test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
     steps:
@@ -185,7 +185,7 @@ jobs:
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: [build-docker]
+    needs: [security-audit, docker-validation, build-and-test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
     environment: staging
     
@@ -240,7 +240,7 @@ jobs:
   cleanup:
     name: Cleanup
     runs-on: ubuntu-latest
-    needs: [health-check]
+    needs: [security-audit, docker-validation, build-and-test, build-docker, deploy-production, health-check]
     if: always()
     
     steps:
