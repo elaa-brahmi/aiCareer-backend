@@ -54,9 +54,9 @@ module.exports = server; // no circular export anymore
    (async () => {
     try {
       await sequelize.sync({ alter: true }); // or .sync() if schema is correct
-      console.log('Sequelize models synced');
+     // console.log('Sequelize models synced');
     } catch (e) {
-      console.error('Sequelize sync failed:', e);
+     // console.error('Sequelize sync failed:', e);
     }
   })(); 
 
@@ -70,6 +70,16 @@ app.use('/api/users', userRouter)
 app.use('/api/scrape', scraperRouter)
 app.use('/api/resume',ResumeRouter)
 app.use('/api/chat',ChatRouter)
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'healthy', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
 
 //////response from n8n jobs automation//////
 app.post('/api/linkedin/search', async(req,res) => {
