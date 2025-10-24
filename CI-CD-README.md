@@ -7,8 +7,6 @@ This repository contains a comprehensive CI/CD pipeline for the AI Career Backen
 The CI/CD pipeline is configured using GitHub Actions and includes the following stages:
 
 ### 1. Code Quality & Linting
-- **ESLint**: Code linting and style checking
-- **Prettier**: Code formatting validation
 - **Security Audit**: npm audit for vulnerability scanning
 
 ### 2. Docker Validation
