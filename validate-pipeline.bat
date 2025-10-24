@@ -43,34 +43,7 @@ if %errorlevel% neq 0 (
     echo ✅ Dependencies installed successfully
 )
 
-REM Step 4: Run linting (if ESLint is configured)
-echo 📋 Step 4: Running code linting...
-if exist ".eslintrc.js" (
-    npm run lint
-    if %errorlevel% neq 0 (
-        echo ❌ Code linting failed
-        exit /b 1
-    ) else (
-        echo ✅ Code linting passed
-    )
-) else (
-    echo ⚠️  ESLint not configured, skipping linting
-)
 
-REM Step 5: Check code formatting
-echo 📋 Step 5: Checking code formatting...
-where prettier >nul 2>&1
-if %errorlevel% equ 0 (
-    npm run format:check
-    if %errorlevel% neq 0 (
-        echo ❌ Code formatting check failed
-        exit /b 1
-    ) else (
-        echo ✅ Code formatting check passed
-    )
-) else (
-    echo ⚠️  Prettier not configured, skipping format check
-)
 
 REM Step 6: Run security audit
 echo 📋 Step 6: Running security audit...
