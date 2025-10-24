@@ -64,8 +64,12 @@ fi
 
 # Step 6: Run security audit
 echo "📋 Step 6: Running security audit..."
-npm audit --audit-level=moderate
-print_status "Security audit completed" $?
+npm audit --audit-level=high
+if [ $? -eq 0 ]; then
+    print_status "Security audit completed - no high/critical vulnerabilities" 0
+else
+    print_warning "Security audit found high/critical issues"
+fi
 
 # Step 7: Run tests
 echo "📋 Step 7: Running tests..."

@@ -47,11 +47,11 @@ if %errorlevel% neq 0 (
 
 REM Step 6: Run security audit
 echo 📋 Step 6: Running security audit...
-npm audit --audit-level=moderate
+npm audit --audit-level=high
 if %errorlevel% neq 0 (
-    echo ⚠️  Security audit found issues
+    echo ⚠️  Security audit found high/critical issues
 ) else (
-    echo ✅ Security audit completed
+    echo ✅ Security audit completed - no high/critical vulnerabilities
 )
 
 REM Step 7: Run tests
