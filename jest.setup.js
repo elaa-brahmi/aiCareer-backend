@@ -1,10 +1,7 @@
 // Jest setup file
 require('dotenv').config();
 
-// Set test environment variables
-process.env.NODE_ENV = 'test';
-process.env.JWT_SECRET = 'HmHyRrH3+UwZrfY1em4v7Ie3Iy5bCZ6Vz+0M9sebC08=';
-process.env.DATABASE_URL = 'postgres://postgres:0000@localhost:5432/aiCareer_test';
+
 
 // Mock external services for testing
 jest.mock('@pinecone-database/pinecone');
