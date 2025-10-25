@@ -91,7 +91,7 @@ jobs:
       - name: Wait for PostgreSQL
         run: |
           until pg_isready -h postgres -p 5432 -U ${{ env.POSTGRES_USER }}; do
-            echo "⏳ Waiting for PostgreSQL..."
+            echo " Waiting for PostgreSQL..."
             sleep 2
           done
 
@@ -140,7 +140,7 @@ jobs:
       - name: Skip Docker Hub login (env not configured)
         if: ${{ env.DOCKER_USERNAME == '' || env.DOCKER_PASSWORD == '' }}
         run: |
-          echo "⚠️  Docker Hub env not configured"
+          echo "  Docker Hub env not configured"
           echo "To enable Docker image pushing, configure these env:"
           echo "- DOCKER_USERNAME: Your Docker Hub username"
           echo "- DOCKER_PASSWORD: Your Docker Hub password/token"
