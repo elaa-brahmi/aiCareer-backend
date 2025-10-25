@@ -31,8 +31,7 @@ jobs:
         run: npm ci
 
       - name: Run security audit
-        run: npm audit --audit-level=high
-        continue-on-error: true
+        run: npm audit --audit-level=high || true
 
       - name: Check for known vulnerabilities
         run: |
@@ -125,11 +124,7 @@ jobs:
           DATABASE_URL: postgres://${{ env.POSTGRES_USER }}:${{ env.POSTGRES_PASSWORD }}@localhost:5432/${{ env.POSTGRES_DB }}
 
       - name: Test basic functionality
-        run: |
-          echo "Testing basic Node.js functionality..."
-          node -e "console.log('Node.js is working correctly')"
-          node -e "console.log(' Basic syntax validation passed')"
-          echo "Basic functionality test completed successfully"
+        run: npm test
 
   # Job 4: Build Docker Image
   build-docker:
@@ -147,13 +142,13 @@ jobs:
 
       - name: Login to Docker Hub (if secrets configured)
         uses: docker/login-action@v3
-        if: ${{ env.DOCKER_USERNAME != '' && env.DOCKER_PASSWORD != '' }}
+        if: ${{ secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != '' }}
         with:
-          username: ${{ env.DOCKER_USERNAME }}
-          password: ${{ env.DOCKER_PASSWORD }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Skip Docker Hub login (env not configured)
-        if: ${{ env.DOCKER_USERNAME == '' || env.DOCKER_PASSWORD == '' }}
+        if: ${{ secrets.DOCKER_USERNAME == '' || secrets.DOCKER_PASSWORD == '' }}
         run: |
           echo "⚠️  Docker Hub env not configured"
           echo "To enable Docker image pushing, configure these env:"
@@ -165,7 +160,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.DOCKER_USERNAME != '' && env.DOCKER_PASSWORD != '' && format('{0}/ai-career-backend', env.DOCKER_USERNAME) || 'ai-career-backend' }}
+          images: ${{ secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != '' && format('{0}/ai-career-backend', secrets.DOCKER_USERNAME) || 'ai-career-backend' }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -176,7 +171,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: ${{ env.DOCKER_USERNAME != '' && env.DOCKER_PASSWORD != '' }}
+          push: ${{ secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != '' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -196,9 +191,9 @@ jobs:
           echo "Deploying to staging environment..."
           # Add your staging deployment commands here
           # Example:
-          # ssh user@staging-server "docker pull ${{ env.DOCKER_USERNAME }}/ai-career-backend:develop && docker-compose -f docker-compose.staging.yml up -d"
+          # ssh user@staging-server "docker pull ${{ secrets.DOCKER_USERNAME }}/ai-career-backend:develop && docker-compose -f docker-compose.staging.yml up -d"
 
-  # Job 6: Deploy to Production
+  # Job 6: Deploy to Production(deploy to render)
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
@@ -207,14 +202,12 @@ jobs:
     environment: production
     
     steps:
-      - name: Deploy to production
+      - name: Trigger Render Deployment
         run: |
-          echo "Deploying to production environment..."
-          # Add your production deployment commands here
-          # Example:
-          # ssh user@production-server "docker pull ${{ env.DOCKER_USERNAME }}/ai-career-backend:latest && docker-compose up -d"
+          echo "🚀 Triggering Render deploy..."
+          curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
 
-  # Job 7: Health Check
+  # Job 6: Health Check
   health-check:
     name: Health Check
     runs-on: ubuntu-latest
@@ -223,21 +216,19 @@ jobs:
     
     steps:
       - name: Wait for deployment
-        run: sleep 30
+        run: sleep 40
 
       - name: Health check
         run: |
-          echo "Performing health check..."
-          # Add health check commands here
-          # Example:
-          # curl -f http://your-production-url/health || exit 1
+          echo "✅ Checking deployed app health..."
+          curl -f https://<YOUR_RENDER_APP_URL>/api/health || exit 1
 
       - name: Notify deployment status
         run: |
           echo "Deployment completed successfully!"
-          # Add notification logic here (Slack, Discord, email, etc.)
+          
 
-  # Job 8: Cleanup
+  # Job 7: Cleanup
   cleanup:
     name: Cleanup
     runs-on: ubuntu-latest

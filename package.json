@@ -39,7 +39,7 @@
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
-    "test": "echo 'Tests skipped - focusing on deployment' && exit 0",
+    "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "docker:build": "docker build -t ai-career-backend .",
