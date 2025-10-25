@@ -1,6 +1,7 @@
 const { Sequelize } = require('sequelize');
+require('dotenv').config();
 
-const sequelize = new Sequelize(`postgres://postgres:0000@localhost:5432/aiCareer`, {
+const sequelize = new Sequelize(`postgres://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@localhost:5432/${process.env.POSTGRES_DB}`, {
   dialect: 'postgres'
 });
 // Test connection
