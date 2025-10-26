@@ -90,17 +90,20 @@ jobs:
       - name: Wait for PostgreSQL
         run: |
           echo "Waiting for PostgreSQL to be ready..."
-          timeout=60
-          until pg_isready -h db -p 5432 -U postgres; do
+          timeout=120
+          while ! pg_isready -h db -p 5432 -U postgres > /dev/null 2>&1; do
+            echo "  Postgres not ready yet..."
+            sleep 5
+            timeout=$((timeout-5))
             if [ $timeout -le 0 ]; then
               echo "PostgreSQL did not start in time!"
+              docker ps
+              docker logs $(docker ps -q --filter "name=career_ai_db")
               exit 1
             fi
-            echo "  Postgres not ready yet..."
-            sleep 2
-            timeout=$((timeout-2))
           done
           echo "PostgreSQL is ready!"
+
 
       - name: Run tests
         env:
