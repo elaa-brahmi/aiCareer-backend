@@ -61,46 +61,53 @@ jobs:
           docker compose config > /dev/null
           echo "Docker Compose configuration is valid"
 
-  # Job 3: Build and Test
   build-and-test:
     name: Build and Test
     runs-on: ubuntu-latest
     services:
-      postgres:
-        image: postgres:16
+      db:
+        image: ankane/pgvector:latest
         env:
-          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
-          POSTGRES_DB: ${{ env.POSTGRES_DB }}
-          POSTGRES_USER: ${{ env.POSTGRES_USER }}
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: 0000
+          POSTGRES_DB: aiCareer
         ports:
           - 5432:5432
 
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
+
       - run: npm ci
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
       - name: Wait for PostgreSQL
         run: |
           echo "Waiting for PostgreSQL to be ready..."
-          timeout=30
-          until pg_isready -h postgres -p 5432 -U ${{ env.POSTGRES_USER }} || [ $timeout -le 0 ]; do
+          timeout=60
+          until pg_isready -h db -p 5432 -U postgres; do
+            if [ $timeout -le 0 ]; then
+              echo "PostgreSQL did not start in time!"
+              exit 1
+            fi
             echo "  Postgres not ready yet..."
             sleep 2
             timeout=$((timeout-2))
           done
-          if [ $timeout -le 0 ]; then
-            echo "PostgreSQL did not start in time!"
-            exit 1
-          fi
+          echo "PostgreSQL is ready!"
+
       - name: Run tests
         env:
           NODE_ENV: test
-          DATABASE_URL: postgres://${{ env.POSTGRES_USER }}:${{ env.POSTGRES_PASSWORD }}@postgres:5432/${{ env.POSTGRES_DB }}
+          DATABASE_URL: postgres://postgres:0000@db:5432/aiCareer
         run: npm test
+
 
 
   # Job 4: Build Docker Image
