@@ -85,21 +85,17 @@ jobs:
 
       - name: Wait for PostgreSQL
         run: |
-          until pg_isready -h postgres -p 5432 -U ${{ env.POSTGRES_USER }}; do
-            echo " Waiting for PostgreSQL..."
+          echo "Waiting for PostgreSQL to be ready..."
+          timeout=30
+          until pg_isready -h postgres -p 5432 -U ${{ env.POSTGRES_USER }} || [ $timeout -le 0 ]; do
+            echo "  Postgres not ready yet..."
             sleep 2
+            timeout=$((timeout-2))
           done
-
-      - name: Run database migrations (if any)
-        run: |
-          if [ -d "migrations" ] || [ -d "db/migrate" ]; then
-            echo "Running migrations..."
-            # add migration commands here
-          else
-            echo "No migrations found, skipping..."
+          if [ $timeout -le 0 ]; then
+            echo "PostgreSQL did not start in time!"
+            exit 1
           fi
-        continue-on-error: true
-
       - name: Run tests
         env:
           NODE_ENV: test
