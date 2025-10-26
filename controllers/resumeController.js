@@ -46,9 +46,10 @@ const matchResume = async(resumeText) => {
 
   const query = await index.query({
     vector: embedding,
-    topK: 15,
+    topK: 20,
     includeMetadata: true,
   });
+  console.log('matches count ',query.matches)
 
   return query.matches.map((match) => ({
     id: match.id,
@@ -285,6 +286,7 @@ const updateUserMatches = async(req,res) => {
          for (const match of matches) {
           const jobDetails = await getJobDetailsByUrl(match.url);
           if (!jobDetails) continue;
+          console.log(jobDetails.url)
 
           const existing = await MatchesJobs.findOne({
             where: {
