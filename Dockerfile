@@ -26,7 +26,7 @@ EXPOSE 9090
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('https://api.render.com/deploy/srv-d3uadb3ipnbc738qd310?key=D4vdCbq4D_4/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })" || exit 1
+  CMD node -e "require('http').get('http://localhost:9090/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })" || exit 1
 
 # Start the application
 CMD ["npm", "start"]
