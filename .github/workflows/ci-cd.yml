@@ -225,17 +225,21 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
     steps:
-      - name: Wait for deployment
-        run: sleep 40
-
-      - name: Health check
+      - name: Wait for Render to deploy
         run: |
-          echo "✅ Checking deployed app health..."
-          curl -f http://localhost:9090/api/health || exit 1
-
-      - name: Notify deployment status
-        run: |
-          echo "Deployment completed successfully!"
+          echo "🕐 Waiting for Render deployment to be ready..."
+          for i in {1..30}; do
+            if curl -fs "$RENDER_APP_URL/api/health" > /dev/null; then
+              echo "✅ Render app is live!"
+              exit 0
+            fi
+            echo "⏳ Still waiting for app... (attempt $i)"
+            sleep 10
+          done
+          echo "❌ App did not become ready in time"
+          exit 1
+        env:
+          RENDER_APP_URL: ${{ secrets.RENDER_APP_URL }}
         
   # Job 7: Cleanup
   cleanup:
