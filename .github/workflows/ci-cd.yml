@@ -228,7 +228,7 @@ jobs:
       - name: Wait for Render to deploy
         run: |
           echo "🕐 Waiting for Render deployment to be ready..."
-          for i in {1..30}; do
+          for i in {1..60}; do
             if curl -fs "$RENDER_APP_URL/api/health" > /dev/null; then
               echo "✅ Render app is live!"
               exit 0
