@@ -230,6 +230,7 @@ const getUserMatches = async (req, res) => {
         limit,
         offset,
       });
+      console.log("user matches ",matches)
   
       return res.status(200).json({
         matches,
