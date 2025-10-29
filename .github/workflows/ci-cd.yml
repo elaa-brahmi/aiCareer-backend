@@ -229,7 +229,7 @@ jobs:
         run: |
           echo "🕐 Waiting for Render deployment to be ready..."
           for i in {1..60}; do
-            if curl -fs "$RENDER_APP_URL/api/health" > /dev/null; then
+            if curl -fs "${{ secrets.RENDER_APP_URL }}/api/health" > /dev/null; then
               echo "✅ Render app is live!"
               exit 0
             fi
