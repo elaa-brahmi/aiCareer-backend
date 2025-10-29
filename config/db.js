@@ -1,9 +1,21 @@
 const { Sequelize } = require('sequelize');
 require('dotenv').config();
 
-const sequelize = new Sequelize(`postgres://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@localhost:5432/${process.env.POSTGRES_DB}`, {
-  dialect: 'postgres'
+const IS_RENDER = process.env.IS_RENDER === 'true'; 
+let db_url = `postgres://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@localhost:5432/${process.env.POSTGRES_DB}`;
+
+if (IS_RENDER) {
+  db_url = process.env.DATABASE_URL; // render db URL
+}
+
+const sequelize = new Sequelize(db_url, {
+  dialect: 'postgres',
+  dialectOptions: IS_RENDER
+    ? { ssl: { require: true, rejectUnauthorized: false } }
+    : {},
+  logging: false,
 });
+
 // Test connection
 const testConnection = async () => {
   try {
@@ -14,4 +26,4 @@ const testConnection = async () => {
   }
 };
 
-module.exports = {sequelize, testConnection};
+module.exports = { sequelize, testConnection };
