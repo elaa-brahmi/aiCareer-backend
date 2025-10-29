@@ -130,6 +130,6 @@ cron.schedule('0 6 */2 * *', () => {
   deleteOldJobs();
 });
 //attach socket to server
-server.listen(port, () => {
-    console.log(`http://localhost:${port}`);
-  });
+//Render detects your web service port dynamically — but you must ensure your app binds to all interfaces, not just localhost.
+server.listen(port, '0.0.0.0', () => console.log(`Server running on ${port}`));
+/* app.listen(9090, () => console.log('Listening...'));  */// binds to localhost only
