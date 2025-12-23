@@ -139,24 +139,6 @@ const saveJobsToDB = async(jobs) => {
   console.log(`${savedCount} new jobs from LinkedIn processed and stored. ${duplicateCount} duplicates skipped.`);
 }
 
-/* const constructSearchUrl = (keywords, location = '', dateSincePosted = '') => {
-  const baseUrl = 'https://www.linkedin.com/jobs/search';
-  const params = new URLSearchParams({
-    keywords: keywords,
-    position: 1,
-    pageNum: 0
-  });
-
-  if (location) {
-    params.append('location', location);
-  }
-
-  if (dateSincePosted) {
-    params.append('f_TPR', dateSincePosted);
-  }
-
-  return `${baseUrl}?${params.toString()}`;
-} */
 
 const saveJobs = async (jobsArray) => {
   try {
